@@ -129,11 +129,11 @@ class MainWindow(QWidget):  # QWidget
         #self.lbl = DragandDrop()
         self.initUI()
         self.w = RoiWindow()
-        self.loaded_files = FileWindow(self.alldata, self.filepath_list, self.colorlist)
+        #self.loaded_files = FileWindow(self.alldata, self.filepath_list, self.colorlist)
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground("k")
 
-        print(self.loaded_files.checkboxstate)
+        #print(self.loaded_files.checkboxstate)
 
 
     def initUI(self):
@@ -144,7 +144,7 @@ class MainWindow(QWidget):  # QWidget
 
 
         # Create buttons
-        self.plot_btn = QPushButton("plot")
+        #self.plot_btn = QPushButton("plot")
         self.draw_mask_btn = QPushButton("draw_ROI")
         self.draw_mask_btn.setCheckable(True)
         self.create_mask_btn = QPushButton("cut")
@@ -172,7 +172,7 @@ class MainWindow(QWidget):  # QWidget
         self.gridLayout = QGridLayout()
         self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
         self.gridLayout.addLayout(self.checkboxGroup, 0, 5, 5, 2)
-        self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
+        #self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
         self.gridLayout.addWidget(self.draw_mask_btn, 5, 1, 1, 1)
         self.gridLayout.addWidget(self.create_mask_btn, 5, 2, 1, 1)
         self.gridLayout.addWidget(self.save_mask_btn, 5, 3, 1, 1)
@@ -259,28 +259,17 @@ class MainWindow(QWidget):  # QWidget
             event.ignore()
 
     def update_checkbox(self):
-        checkboxlist = []
-
-
-
         if not self.filepath_list:
             print("zero entries")
         else:
-
             for i in range(len(self.filepath_list)):
                 checkBox = QCheckBox('{}'.format(self.filepath_list[i]), self)
                 checkBox.setChecked(True)
                 self.checkboxGroup.addWidget(checkBox, i, 0)
-                #self.checkboxGroup.rowStretch()
+                self.checkboxGroup.setRowStretch(self.checkboxGroup.rowCount(), 1)
                 self.checkboxGroup.setSpacing(5)
 
 
-        # for i in range(len(self.alldata)):
-        #     self.checkbox = QtWidgets.QCheckBox("{}".format(str(self.filepath_list[i])))
-        #     self.checkbox.setChecked(True)
-        #     checkboxlist.append(self.checkbox)
-        #     self.checkboxlayout.addWidget(self.checkbox)
-        #     self.checkbox.stateChanged.connect(self.click)
 
     def load(self):
         """load .hdf5_file"""
@@ -307,13 +296,13 @@ class MainWindow(QWidget):  # QWidget
         # add to the mainlayout
         self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
         self.plot_widget.plotItem.setAutoVisible(y=True)
-        if self.loaded_files.checkboxstate == 0:
-            print(self.loaded_files.checkboxstate, "after loading and clicking")
-            self.plot_widget.removeItem(self.scatter)
+        # if self.loaded_files.checkboxstate == 0:
+        #     print(self.loaded_files.checkboxstate, "after loading and clicking")
+        #     self.plot_widget.removeItem(self.scatter)
 
 
-        self.loaded_files.show()
-        self.loaded_files.update_checkbox()
+        #self.loaded_files.show()
+        #self.loaded_files.update_checkbox()
 
 
     def update_file_paths(self):
