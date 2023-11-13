@@ -19,9 +19,10 @@ from PyQt5 import QtCore, QtGui
 
 
 
+
 import sys, os
 import PyQt5.QtWidgets
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QMainWindow, QMenu
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QMainWindow, QMenu, QGridLayout,QCheckBox, QGroupBox
 from PyQt5.QtCore import Qt
 
 
@@ -31,14 +32,6 @@ col_dbscan = ["frame", "x", "y", "photons", "sx", "sy", "bg", "lpx", "lpy", "ell
                          "len", "n", "photon_rate", "group"]  # column names of dbscan file
 
 
-class DragandDrop(QLabel):
-    def __init__(self):
-        super().__init__()
-
-        self.setAlignment(Qt.AlignCenter)
-        self.setText('\n\n Drop .HDF5 File Here \n\n')
-        self.setStyleSheet('''QLabel{border: 4px dashed #aaa}''')
-        #self.setAlignment(Qt.AlignCenter)
 
 
 
@@ -88,6 +81,7 @@ class FileWindow(QWidget):
         super().__init__()
         self.setWindowTitle("All files")
         self.checkboxlayout = QVBoxLayout(self)
+        self.checkboxstate = 2 # clicked, activated
 
     def update_checkbox(self):
         checkboxlist = []
@@ -103,12 +97,14 @@ class FileWindow(QWidget):
 
     def click(self, state):
         if state == Qt.Checked:
-            print("clicked")
+            #print("clicked", state)
+            self.checkboxstate = state
         else:
-            print("not clicked")
+            #print("not clicked", state)
+            self.checkboxstate = state
 
 
-class MainWindow(QMainWindow):  # QWidget
+class MainWindow(QWidget):  # QWidget
     def __init__(self):
         super(MainWindow, self).__init__()
         # self.resize(600, 600)
@@ -121,8 +117,8 @@ class MainWindow(QMainWindow):  # QWidget
         #self.myQMenuBar = QtGui.QMenuBar(self)
         #exitMenu = self.myQMenuBar.addMenu('File')
         #self._createMenuBar()
-        self._createActions()
-        self._createMenuBar()
+        # self._createActions()
+        # self._createMenuBar()
         #self._createToolBars()
 
 
@@ -130,56 +126,69 @@ class MainWindow(QMainWindow):  # QWidget
         self.ROI_y = []
         self.colorlist = ["k", "m", "g", "b", "c", "w", "r"]
         # call all subclasses
-        # self.lbl = DragandDrop()
+        #self.lbl = DragandDrop()
         self.initUI()
         self.w = RoiWindow()
         self.loaded_files = FileWindow(self.alldata, self.filepath_list, self.colorlist)
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground("k")
 
+        print(self.loaded_files.checkboxstate)
+
 
     def initUI(self):
-
+        # Set general properties
         self.setWindowTitle("SMLM Mask")
-        self.resize(600, 600)
-        widget = QWidget()
-        self.setCentralWidget(widget)
+        self.resize(800, 600)
 
-        self.lbl = DragandDrop()
-        # Layout
-        #self.mainlayout = QVBoxLayout(self)
-        self.mainlayout = QVBoxLayout(widget)
-        # self.buttonlayout = QHBoxLayout(self)
-        self.buttonlayout = QHBoxLayout(widget)
-        self.mainlayout.addWidget(self.lbl)  # Add label to mainlayout
-        self.mainlayout.addLayout(self.buttonlayout)  # Add buttonlayout to mainlayout
 
-        #  Create Buttons
-        self.draw_mask_btn = QPushButton("draw_mask")
+
+        # Create buttons
+        self.plot_btn = QPushButton("plot")
+        self.draw_mask_btn = QPushButton("draw_ROI")
         self.draw_mask_btn.setCheckable(True)
-        self.apply_mask_btn = QPushButton("apply_mask")
+        self.create_mask_btn = QPushButton("cut")
         self.load_mask_btn = QPushButton("load_mask")
-        #self.create_mask_btn.setCheckable(True)
+        # self.create_mask_btn.setCheckable(True)
         self.save_mask_btn = QPushButton("save mask")
         self.reset_btn = QPushButton("reset")
 
-        #  Add buttons to buttonlayout (as Widgets)
-        self.buttonlayout.addWidget(self.draw_mask_btn)
-        self.buttonlayout.addWidget(self.apply_mask_btn)
-        self.buttonlayout.addWidget(self.load_mask_btn)
-        self.buttonlayout.addWidget(self.save_mask_btn)
-        self.buttonlayout.addWidget(self.reset_btn)
 
 
-        #  Set Layout
-        self.setLayout(self.mainlayout)
+        # Create Label
+        self.lbl = QLabel()
+        self.lbl.setAlignment(Qt.AlignCenter)
+        self.lbl.setText('\n\n Drop .HDF5 Files \n\n')
+        self.lbl.setStyleSheet("border: 4px dashed")
 
-        # Connect buttons to functions
-        self.draw_mask_btn.pressed.connect(self.create_mask)
-        self.apply_mask_btn.pressed.connect(self.apply_mask)
-        self.load_mask_btn.pressed.connect(self.load_mask)
-        self.save_mask_btn.pressed.connect(self.save_mask)
-        self.reset_btn.pressed.connect(self.reset)
+        #self.lbl2 = QLabel('file names', self)
+        #self.lbl2 = QCheckBox() #('file names', self)
+        self.checkboxGroup = QGridLayout()
+        #self.groupBox.setLayout(QVBoxLayout())
+        #self.lbl2.setStyleSheet("border: 1px solid black")
+        #self.lbl2.setAlignment(Qt.AlignCenter)
+
+        # Create Girdlayout and add Widgets
+        self.gridLayout = QGridLayout()
+        self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
+        self.gridLayout.addLayout(self.checkboxGroup, 0, 5, 5, 2)
+        self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
+        self.gridLayout.addWidget(self.draw_mask_btn, 5, 1, 1, 1)
+        self.gridLayout.addWidget(self.create_mask_btn, 5, 2, 1, 1)
+        self.gridLayout.addWidget(self.save_mask_btn, 5, 3, 1, 1)
+        self.gridLayout.addWidget(self.reset_btn, 5, 4, 1, 1)
+
+        # Set Layout
+        self.setLayout(self.gridLayout)
+
+
+
+        # # Connect buttons to functions
+        # self.draw_mask_btn.pressed.connect(self.create_mask)
+        # self.apply_mask_btn.pressed.connect(self.apply_mask)
+        # self.load_mask_btn.pressed.connect(self.load_mask)
+        # self.save_mask_btn.pressed.connect(self.save_mask)
+        # self.reset_btn.pressed.connect(self.reset)
 
     def _createActions(self):
         # Creating action using the first constructor
@@ -243,10 +252,35 @@ class MainWindow(QMainWindow):  # QWidget
             self.filepath_list.append(os.path.basename(self.file_path))
             self.show()
             event.accept()
+            self.update_checkbox()
             self.plot()
 
         else:
             event.ignore()
+
+    def update_checkbox(self):
+        checkboxlist = []
+
+
+
+        if not self.filepath_list:
+            print("zero entries")
+        else:
+
+            for i in range(len(self.filepath_list)):
+                checkBox = QCheckBox('{}'.format(self.filepath_list[i]), self)
+                checkBox.setChecked(True)
+                self.checkboxGroup.addWidget(checkBox, i, 0)
+                #self.checkboxGroup.rowStretch()
+                self.checkboxGroup.setSpacing(5)
+
+
+        # for i in range(len(self.alldata)):
+        #     self.checkbox = QtWidgets.QCheckBox("{}".format(str(self.filepath_list[i])))
+        #     self.checkbox.setChecked(True)
+        #     checkboxlist.append(self.checkbox)
+        #     self.checkboxlayout.addWidget(self.checkbox)
+        #     self.checkbox.stateChanged.connect(self.click)
 
     def load(self):
         """load .hdf5_file"""
@@ -259,6 +293,7 @@ class MainWindow(QMainWindow):  # QWidget
     def plot(self):
         ''' Plot data '''
 
+        #print(self.loaded_files.checkboxstate)
         color_ind = len(self.alldata)-1  # add some colors, loop repetitively over colorlist
         if color_ind >= len(self.colorlist):
             color_ind = color_ind % len(self.colorlist)
@@ -270,12 +305,19 @@ class MainWindow(QMainWindow):  # QWidget
         # set the data
         self.scatter.setData(x=self.data["x"], y=self.data["y"])
         # add to the mainlayout
-        self.mainlayout.replaceWidget(self.lbl, self.plot_widget)
+        self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
         self.plot_widget.plotItem.setAutoVisible(y=True)
+        if self.loaded_files.checkboxstate == 0:
+            print(self.loaded_files.checkboxstate, "after loading and clicking")
+            self.plot_widget.removeItem(self.scatter)
 
 
         self.loaded_files.show()
         self.loaded_files.update_checkbox()
+
+
+    def update_file_paths(self):
+        pass
 
 
 
@@ -341,8 +383,8 @@ class MainWindow(QMainWindow):  # QWidget
         self.scatter.setData(x=self.data_filtered["x"], y=self.data_filtered["y"])
         #self.plot_widget.setXRange(self.LEFT_X, self.RIGHT_X)
         #self.plot_widget.setYRange(self.LOW_Y, self.TOP_Y)
-        for i in reversed(range(self.buttonlayout.count())):
-            print(self.buttonlayout.itemAt(i))
+        for i in reversed(range(self.verticallayout.count())):
+            print(self.verticallayout.itemAt(i))
         #self.change_btn_back(self.buttonlayout)
         #return self.data_filtered
 
@@ -364,7 +406,7 @@ class MainWindow(QMainWindow):  # QWidget
     def reset(self):
         self.plot_data_btn.setDisabled(False)  # disable button
         self.draw_mask_btn.setCheckable(False)
-        self.mainlayout.replaceWidget(self.plot_widget, self.lbl)
+        self.horizontal_layout.replaceWidget(self.plot_widget, self.lbl)
         self.ROI_x = []
         self.ROI_y = []
         self.plot_widget.setParent(None)  # remove widget
