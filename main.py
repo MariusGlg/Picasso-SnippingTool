@@ -124,17 +124,16 @@ class MainWindow(QWidget):  # QWidget
 
         self.ROI_x = []
         self.ROI_y = []
-        self.colorlist = ["k", "m", "g", "b", "c", "w", "r"]
+        self.colorlist = ["k", "b", "m", "b", "c", "w", "r"]
         # call all subclasses
         #self.lbl = DragandDrop()
         self.initUI()
         self.w = RoiWindow()
         #self.loaded_files = FileWindow(self.alldata, self.filepath_list, self.colorlist)
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setBackground("k")
+        self.plot_widget.setBackground("w")
 
-        #print(self.loaded_files.checkboxstate)
-
+        #self.checkboxList[i].stateChanged.connect(self.box_changed)
 
     def initUI(self):
         # Set general properties
@@ -161,22 +160,18 @@ class MainWindow(QWidget):  # QWidget
         self.lbl.setText('\n\n Drop .HDF5 Files \n\n')
         self.lbl.setStyleSheet("border: 4px dashed")
 
-        #self.lbl2 = QLabel('file names', self)
-        #self.lbl2 = QCheckBox() #('file names', self)
+        # Add GridLayout for checkboxes
         self.checkboxGroup = QGridLayout()
-        #self.groupBox.setLayout(QVBoxLayout())
-        #self.lbl2.setStyleSheet("border: 1px solid black")
-        #self.lbl2.setAlignment(Qt.AlignCenter)
 
         # Create Girdlayout and add Widgets
         self.gridLayout = QGridLayout()
         self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
         self.gridLayout.addLayout(self.checkboxGroup, 0, 5, 5, 2)
         #self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
-        self.gridLayout.addWidget(self.draw_mask_btn, 5, 1, 1, 1)
-        self.gridLayout.addWidget(self.create_mask_btn, 5, 2, 1, 1)
-        self.gridLayout.addWidget(self.save_mask_btn, 5, 3, 1, 1)
-        self.gridLayout.addWidget(self.reset_btn, 5, 4, 1, 1)
+        self.gridLayout.addWidget(self.draw_mask_btn, 5, 0, 1, 1)
+        self.gridLayout.addWidget(self.create_mask_btn, 5, 1, 1, 1)
+        self.gridLayout.addWidget(self.save_mask_btn, 5, 2, 1, 1)
+        self.gridLayout.addWidget(self.reset_btn, 5, 3, 1, 1)
 
         # Set Layout
         self.setLayout(self.gridLayout)
@@ -259,16 +254,27 @@ class MainWindow(QWidget):  # QWidget
             event.ignore()
 
     def update_checkbox(self):
+        self.checkboxList = []
         if not self.filepath_list:
             print("zero entries")
         else:
             for i in range(len(self.filepath_list)):
                 checkBox = QCheckBox('{}'.format(self.filepath_list[i]), self)
                 checkBox.setChecked(True)
+                self.checkboxList.append(checkBox)
                 self.checkboxGroup.addWidget(checkBox, i, 0)
                 self.checkboxGroup.setRowStretch(self.checkboxGroup.rowCount(), 1)
                 self.checkboxGroup.setSpacing(5)
+        for i in range(len(self.checkboxList)):
+            self.checkboxList[i].stateChanged.connect(self.plot)
 
+
+    def checkState(self):
+        for i in range(len(self.checkboxList)):
+            if self.checkboxList[i].isChecked():
+                print("is checked")
+            else:
+                print("is not checked")
 
 
     def load(self):
@@ -282,6 +288,17 @@ class MainWindow(QWidget):  # QWidget
     def plot(self):
         ''' Plot data '''
 
+        # for i in range(self.num):
+        #     if self.checkboxList[i].isChecked():
+        #         self.state[i] = self.check_boxes[i].isChecked()
+        #         if self.state[i]:
+        #             if self.plot_data[i] is not None:
+        #                 self.plot_widget.addItem(self.plot_data[i])
+        #             else:
+        #                 self.plot_data[i] = self.plot_widget.plot(*self.box_data[i])
+        #         else:
+        #             self.plot_widget.removeItem(self.plot_data[i])
+        #         break
         #print(self.loaded_files.checkboxstate)
         color_ind = len(self.alldata)-1  # add some colors, loop repetitively over colorlist
         if color_ind >= len(self.colorlist):
@@ -296,13 +313,24 @@ class MainWindow(QWidget):  # QWidget
         # add to the mainlayout
         self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
         self.plot_widget.plotItem.setAutoVisible(y=True)
-        # if self.loaded_files.checkboxstate == 0:
-        #     print(self.loaded_files.checkboxstate, "after loading and clicking")
-        #     self.plot_widget.removeItem(self.scatter)
+
+        for item in self.plot_widget.listDataItems():
+            print(self.scatter)
+            print(item)
+            sdf=1
+
+        # https://stackoverflow.com/questions/61737930/how-to-make-pg-plotitem-removeitem-recognize-plotdataitems-solely-off-name
 
 
-        #self.loaded_files.show()
-        #self.loaded_files.update_checkbox()
+        # # Remove item if checkbock is unchecked
+        # for i in range(len(self.checkboxList)):
+        #     if self.checkboxList[i].isChecked():
+        #         print("is checked")
+        #     if self.checkboxList[i].isChecked() == False:
+        #         print("Unchecked the box")
+        #         #self.plot_widget.removeItem(self.alldata[i])
+        #         self.plot_widget.removeItem(self.scatter)
+
 
 
     def update_file_paths(self):
