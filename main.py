@@ -144,6 +144,7 @@ class MainWindow(QWidget):  # QWidget
 
         # Create buttons
         #self.plot_btn = QPushButton("plot")
+        self.plot_btn = QPushButton("plot")
         self.draw_mask_btn = QPushButton("draw_ROI")
         self.draw_mask_btn.setCheckable(True)
         self.create_mask_btn = QPushButton("cut")
@@ -168,10 +169,11 @@ class MainWindow(QWidget):  # QWidget
         self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
         self.gridLayout.addLayout(self.checkboxGroup, 0, 5, 5, 2)
         #self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
-        self.gridLayout.addWidget(self.draw_mask_btn, 5, 0, 1, 1)
-        self.gridLayout.addWidget(self.create_mask_btn, 5, 1, 1, 1)
-        self.gridLayout.addWidget(self.save_mask_btn, 5, 2, 1, 1)
-        self.gridLayout.addWidget(self.reset_btn, 5, 3, 1, 1)
+        self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
+        self.gridLayout.addWidget(self.draw_mask_btn, 5, 1, 1, 1)
+        self.gridLayout.addWidget(self.create_mask_btn, 5, 2, 1, 1)
+        self.gridLayout.addWidget(self.save_mask_btn, 5, 3, 1, 1)
+        self.gridLayout.addWidget(self.reset_btn, 5, 4, 1, 1)
 
         # Set Layout
         self.setLayout(self.gridLayout)
@@ -179,6 +181,7 @@ class MainWindow(QWidget):  # QWidget
 
 
         # # Connect buttons to functions
+        self.plot_btn.pressed.connect(self.plot)
         # self.draw_mask_btn.pressed.connect(self.create_mask)
         # self.apply_mask_btn.pressed.connect(self.apply_mask)
         # self.load_mask_btn.pressed.connect(self.load_mask)
@@ -248,7 +251,7 @@ class MainWindow(QWidget):  # QWidget
             self.show()
             event.accept()
             self.update_checkbox()
-            self.plot()
+            #self.plot()
 
         else:
             event.ignore()
@@ -288,36 +291,52 @@ class MainWindow(QWidget):  # QWidget
     def plot(self):
         ''' Plot data '''
 
-        # for i in range(self.num):
-        #     if self.checkboxList[i].isChecked():
-        #         self.state[i] = self.check_boxes[i].isChecked()
-        #         if self.state[i]:
-        #             if self.plot_data[i] is not None:
-        #                 self.plot_widget.addItem(self.plot_data[i])
-        #             else:
-        #                 self.plot_data[i] = self.plot_widget.plot(*self.box_data[i])
-        #         else:
-        #             self.plot_widget.removeItem(self.plot_data[i])
-        #         break
-        #print(self.loaded_files.checkboxstate)
-        color_ind = len(self.alldata)-1  # add some colors, loop repetitively over colorlist
+        # Add some colors, loop repetitively over colorlist
+        color_ind = len(self.alldata)-1
         if color_ind >= len(self.colorlist):
             color_ind = color_ind % len(self.colorlist)
-        # create a scatter object
+
+        # Create a scatter object
         self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=1, color=self.colorlist[color_ind]),
                                           symbol='o', size=5)
-
-        self.plot_widget.addItem(self.scatter)
-        # set the data
-        self.scatter.setData(x=self.data["x"], y=self.data["y"])
-        # add to the mainlayout
+        # Replace Drag&Drop widget with plotWidget
         self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
-        self.plot_widget.plotItem.setAutoVisible(y=True)
 
-        for item in self.plot_widget.listDataItems():
-            print(self.scatter)
-            print(item)
-            sdf=1
+        # Loop over dataset and plot
+        for i in range(len(self.alldata)):
+            print("len dataset:", len(self.alldata))
+            #print("plotwidget size", len(self.plot_widget.listDataItems()))
+            self.plot_widget.addItem(self.scatter)
+            #print("plotwidget size", len(self.plot_widget.listDataItems()))
+            # print(self.plot_widget.listDataItems()[i], "Checked")
+            self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
+            # add to the mainlayout
+            sdf = 1
+            self.plot_widget.plotItem.setAutoVisible(y=True)
+
+            # Hide plot if checkbox is unselected
+            if not self.checkboxList[i].isChecked():
+                n = np.where(self.checkboxList[i].isChecked() == False)
+                n = n[0][0]
+                print(n)
+                print(self.plot_widget.listDataItems(), "unchecked")
+                self.plot_widget.listDataItems()[i].hide()
+                #self.plot_widget.hide(self.plot_widget.listDataItems()[n])
+                self.plot_widget.removeItem(self.plot_widget.listDataItems()[n])
+                print("plotwidget size", len(self.plot_widget.listDataItems()))
+                print(self.plot_widget.listDataItems())
+                asd=1
+
+        # self.scatter.setData(x=self.data["x"], y=self.data["y"])
+        # # add to the mainlayout
+        # self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
+        # self.plot_widget.plotItem.setAutoVisible(y=True)
+
+        # for item in self.plot_widget.listDataItems():
+        #     print(self.scatter, "scatter name")
+        #     print(item)
+        #     #self.graphWidget.removeItem(item)
+        #     sdf=1
 
         # https://stackoverflow.com/questions/61737930/how-to-make-pg-plotitem-removeitem-recognize-plotdataitems-solely-off-name
 
