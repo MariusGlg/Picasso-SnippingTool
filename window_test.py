@@ -61,7 +61,7 @@ class MyApp(QtGui.QWidget):
                     if self.plot_data[i] is not None:
                         self.plot_widget.addItem(self.plot_data[i])
                     else:
-                        self.plot_data[i] = self.plot_widget.plot(*self.box_data[i])
+                        self.plot_data[i] = self.plot_widget.update_plot(*self.box_data[i])
                 else:
                     self.plot_widget.removeItem(self.plot_data[i])
                 break

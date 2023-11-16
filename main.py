@@ -16,6 +16,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMenuBar, QAction, qApp
 
 from PyQt5 import QtCore, QtGui
+from PyQt5.QtGui import QFont
 
 
 
@@ -126,7 +127,7 @@ class MainWindow(QWidget):  # QWidget
         self.ROI_y = []
         self.colorlist = ["k", "b", "m", "b", "c", "w", "r"]
         # call all subclasses
-        #self.lbl = DragandDrop()
+
         self.initUI()
         self.w = RoiWindow()
         #self.loaded_files = FileWindow(self.alldata, self.filepath_list, self.colorlist)
@@ -139,12 +140,23 @@ class MainWindow(QWidget):  # QWidget
         # Set general properties
         self.setWindowTitle("SMLM Mask")
         self.resize(800, 600)
-
-
+        self.setStyleSheet("background-color: white;")
 
         # Create buttons
+
         #self.plot_btn = QPushButton("plot")
+        #btn_stylesheet = {background-color: orange; border-style: outset; border-width: 2px; border-radius: 15px; border-color: black; padding: 4px;}
         self.plot_btn = QPushButton("plot")
+        self.plot_btn.setStyleSheet("QPushButton"
+                             "{"
+                             "background-color : lightblue;"
+                             "}"
+                             "QPushButton::pressed"
+                             "{"
+                             "background-color : red;"border-radius: 15px;
+                             "}"
+                             )
+        #self.plot_btn.setStyleSheet("border-radius: 15px;")
         self.draw_mask_btn = QPushButton("draw_ROI")
         self.draw_mask_btn.setCheckable(True)
         self.create_mask_btn = QPushButton("cut")
@@ -157,9 +169,12 @@ class MainWindow(QWidget):  # QWidget
 
         # Create Label
         self.lbl = QLabel()
+        #self.lbl.setStyleSheet("background-color: lightgreen")
         self.lbl.setAlignment(Qt.AlignCenter)
         self.lbl.setText('\n\n Drop .HDF5 Files \n\n')
-        self.lbl.setStyleSheet("border: 4px dashed")
+        self.lbl.setFont(QFont("Times font", 22))
+
+        self.lbl.setStyleSheet("background-color: lightblue; border: 2px dashed;")
 
         # Add GridLayout for checkboxes
         self.checkboxGroup = QGridLayout()
@@ -181,7 +196,7 @@ class MainWindow(QWidget):  # QWidget
 
 
         # # Connect buttons to functions
-        self.plot_btn.pressed.connect(self.plot)
+        self.plot_btn.pressed.connect(self.init_Plot)
         # self.draw_mask_btn.pressed.connect(self.create_mask)
         # self.apply_mask_btn.pressed.connect(self.apply_mask)
         # self.load_mask_btn.pressed.connect(self.load_mask)
@@ -243,18 +258,28 @@ class MainWindow(QWidget):  # QWidget
         if event.mimeData().hasImage:
             event.setDropAction(Qt.CopyAction)
             self.file_path = event.mimeData().urls()[0].toLocalFile()
-            self.lbl.setText(self.file_path)  # update text
-            self.setStyleSheet('''QLabel{border: 4px dashed #aaa}''')
+
             self.data = self.load()
             self.alldata.append(self.data)
             self.filepath_list.append(os.path.basename(self.file_path))
             self.show()
             event.accept()
+            self.update_label_text()
             self.update_checkbox()
             #self.plot()
 
         else:
             event.ignore()
+
+    def update_label_text(self):
+        self.lbl.setFont(QFont("Times font", 22))
+        if len(self.alldata) == 1:
+            self.lbl.setText("{} file loaded".format(len(self.alldata)))  # update text
+            self.setStyleSheet('''QLabel{border: 4px dashed #aaa}''')
+        else:
+            self.lbl.setText("{} files loaded".format(len(self.alldata)))  # update text
+            self.setStyleSheet('''QLabel{border: 4px dashed #aaa}''')
+
 
     def update_checkbox(self):
         self.checkboxList = []
@@ -269,7 +294,7 @@ class MainWindow(QWidget):  # QWidget
                 self.checkboxGroup.setRowStretch(self.checkboxGroup.rowCount(), 1)
                 self.checkboxGroup.setSpacing(5)
         for i in range(len(self.checkboxList)):
-            self.checkboxList[i].stateChanged.connect(self.plot)
+            self.checkboxList[i].stateChanged.connect(self.update_plot)
 
 
     def checkState(self):
@@ -286,69 +311,43 @@ class MainWindow(QWidget):  # QWidget
             key = list(locs_file.keys())[0]  # get key name
             locs = locs_file[str(key)][...]
         data_pd = pd.DataFrame(locs)
+
         return data_pd
 
-    def plot(self):
-        ''' Plot data '''
+    def init_Plot(self):
+        #Plot data
 
-        # Add some colors, loop repetitively over colorlist
-        color_ind = len(self.alldata)-1
-        if color_ind >= len(self.colorlist):
-            color_ind = color_ind % len(self.colorlist)
-
-        # Create a scatter object
-        self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=1, color=self.colorlist[color_ind]),
-                                          symbol='o', size=5)
-        # Replace Drag&Drop widget with plotWidget
+        # Replace Label with PlotWidget
         self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
 
-        # Loop over dataset and plot
+        # Loop over all data after plot_btn is pressed and generate plot_widget
         for i in range(len(self.alldata)):
-            print("len dataset:", len(self.alldata))
-            #print("plotwidget size", len(self.plot_widget.listDataItems()))
+
+            # Add some colors, loop repetitively over colorlist
+            if i >= len(self.colorlist):
+                i = i % len(self.colorlist)
+            self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=1, color=self.colorlist[i]),
+                                              symbol='o', size=1)
             self.plot_widget.addItem(self.scatter)
-            #print("plotwidget size", len(self.plot_widget.listDataItems()))
-            # print(self.plot_widget.listDataItems()[i], "Checked")
             self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
-            # add to the mainlayout
-            sdf = 1
+            # Add to the mainlayout
             self.plot_widget.plotItem.setAutoVisible(y=True)
 
-            # Hide plot if checkbox is unselected
+
+    def update_plot(self):
+        '''Update plot dependend on checkbox state'''
+
+        for i in range(len(self.plot_widget.listDataItems())):
+            print(i)
             if not self.checkboxList[i].isChecked():
-                n = np.where(self.checkboxList[i].isChecked() == False)
-                n = n[0][0]
-                print(n)
-                print(self.plot_widget.listDataItems(), "unchecked")
-                self.plot_widget.listDataItems()[i].hide()
-                #self.plot_widget.hide(self.plot_widget.listDataItems()[n])
-                self.plot_widget.removeItem(self.plot_widget.listDataItems()[n])
-                print("plotwidget size", len(self.plot_widget.listDataItems()))
-                print(self.plot_widget.listDataItems())
-                asd=1
-
-        # self.scatter.setData(x=self.data["x"], y=self.data["y"])
-        # # add to the mainlayout
-        # self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
-        # self.plot_widget.plotItem.setAutoVisible(y=True)
-
-        # for item in self.plot_widget.listDataItems():
-        #     print(self.scatter, "scatter name")
-        #     print(item)
-        #     #self.graphWidget.removeItem(item)
-        #     sdf=1
-
-        # https://stackoverflow.com/questions/61737930/how-to-make-pg-plotitem-removeitem-recognize-plotdataitems-solely-off-name
+                self.plot_widget.listDataItems()[i].hide() # hide if box is unchecked
+            else:
+                self.plot_widget.listDataItems()[i].show() # show if box is checked
 
 
-        # # Remove item if checkbock is unchecked
-        # for i in range(len(self.checkboxList)):
-        #     if self.checkboxList[i].isChecked():
-        #         print("is checked")
-        #     if self.checkboxList[i].isChecked() == False:
-        #         print("Unchecked the box")
-        #         #self.plot_widget.removeItem(self.alldata[i])
-        #         self.plot_widget.removeItem(self.scatter)
+
+
+
 
 
 
@@ -361,11 +360,11 @@ class MainWindow(QWidget):  # QWidget
 
     def create_mask(self):
         pen = pg.mkPen(color=(255, 0, 0), width=3, style=QtCore.Qt.SolidLine)
-        self.lines = self.plot_widget.plot(self.ROI_x, self.ROI_y, pen=pen)
-        self.points = self.plot_widget.plot(self.ROI_x, self.ROI_y, pen=pen, symbol='+', symbolSize=10, symbolBrush=('b'))
-        self.plot_widget.scene().sigMouseClicked.connect(self.update_plot)
+        self.lines = self.plot_widget.update_plot(self.ROI_x, self.ROI_y, pen=pen)
+        self.points = self.plot_widget.update_plot(self.ROI_x, self.ROI_y, pen=pen, symbol='+', symbolSize=10, symbolBrush=('b'))
+        self.plot_widget.scene().sigMouseClicked.connect(self.update_plot_mouseclick)
 
-    def update_plot(self, mouseClickEvent):
+    def update_plot_mouseclick(self, mouseClickEvent):
         if self.draw_mask_btn.isChecked():
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
@@ -388,7 +387,7 @@ class MainWindow(QWidget):  # QWidget
         self.ROI_x.append(self.ROI_x[0])
         self.ROI_y.append(self.ROI_y[0])
         self.lines.setData(self.ROI_x, self.ROI_y)
-        self.plot_widget.plot(self.ROI_x, self.ROI_y, fillLevel=0, fillOutline=True)
+        self.plot_widget.update_plot(self.ROI_x, self.ROI_y, fillLevel=0, fillOutline=True)
         polygon = np.stack((self.ROI_x, self.ROI_y), axis=1)
         points = np.stack((self.data["x"].to_numpy(), self.data["y"].to_numpy()), axis=1)
         self.points_inside = [check_points_in_ROI(point[0], point[1], polygon) for point in points]
@@ -448,6 +447,7 @@ class MainWindow(QWidget):  # QWidget
         self.plot_widget.setParent(None)  # remove widget
         self.data = []
         self.lbl.setText('\n\n Drop .HDF5 File Here \n\n')
+
 
 
 @njit(nopython=True)
