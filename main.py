@@ -23,7 +23,7 @@ from PyQt5.QtGui import QFont, QColor
 
 import sys, os
 import PyQt5.QtWidgets
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QMainWindow, QMenu, QGridLayout,QCheckBox, QSlider, QLineEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QMainWindow, QMenu, QGridLayout,QCheckBox, QSlider, QLineEdit, QSpinBox
 from PyQt5.QtCore import Qt
 
 
@@ -171,9 +171,13 @@ class MainWindow(QWidget):  # QWidget
         # Add GridLayout for checkboxes
         self.checkboxGroup = QGridLayout()
         #self.slider = QSlider(Qt.Horizontal)
-        self.px_plot = QLineEdit("px plot size", self)
-        self.px_plot.setGeometry(80, 80, 150, 40)
-        self.px_plot.returnPressed.connect(lambda: self.getLineEditInput())
+        #self.px_plot = QLineEdit("point size (0-20)", self)
+        self.sp = QSpinBox()
+        self.sp.setValue(1)
+        self.sp.setRange(1,20)
+        #self.px_plot.setFixedWidth(100)
+        #self.px_plot.returnPressed.connect(lambda: self.getLineEditInput())
+        self.sp.valueChanged.connect(self.getLineEditInput)
 
 
         # Create Girdlayout and add Widgets
@@ -181,7 +185,7 @@ class MainWindow(QWidget):  # QWidget
         self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
 
         self.gridLayout.addLayout(self.checkboxGroup, 0, 5, 5, 2)
-        self.gridLayout.addWidget(self.px_plot, 5, 6, 1, 1)
+        self.gridLayout.addWidget(self.sp, 5, 5, 1, 1)
         #self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
         self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
         self.gridLayout.addWidget(self.draw_mask_btn, 5, 1, 1, 1)
@@ -265,8 +269,6 @@ class MainWindow(QWidget):  # QWidget
             event.accept()
             self.update_label_text()
             self.update_checkbox()
-            #self.plot()
-
         else:
             event.ignore()
 
@@ -304,9 +306,10 @@ class MainWindow(QWidget):  # QWidget
                 print("is not checked")
 
     def getLineEditInput(self):
-        self.plot_size = self.px_plot.text()
-        print(self.plot_size)
-        print(type(self.plot_size))
+        #self.point_size = self.px_plot.text()
+        self.point_size = self.sp.value()
+        print(self.point_size)
+        print(type(self.point_size))
         self.update_plot()
 
 
@@ -322,6 +325,9 @@ class MainWindow(QWidget):  # QWidget
     def init_Plot(self):
         #Plot data
 
+        #init_vals
+        self.point_size = 1
+
         # Replace Label with PlotWidget
         self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
         self.scatterPlotItemList = []
@@ -332,53 +338,31 @@ class MainWindow(QWidget):  # QWidget
             # Add some colors, loop repetitively over colorlist
             if i >= len(self.colorlist):
                 i = i % len(self.colorlist)
-            self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=3, color=self.colorlist[i]),
-                                              symbol='o', size=1)
+            self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=1, color=self.colorlist[i]),
+                                              symbol='o', size=self.point_size)
             self.plot_widget.addItem(self.scatter)
             self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
             # Add to the mainlayout
             self.plot_widget.plotItem.setAutoVisible(y=True)
             self.scatterPlotItemList.append(self.scatter)
-            sf=1
 
-
-    def update_plot_size(self):
-        for i in range(len(self.alldata)):
-            # Add some colors, loop repetitively over colorlist
-            if i >= len(self.colorlist):
-                i = i % len(self.colorlist)
-            self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=int(self.plot_size), color=self.colorlist[i]),
-                                              symbol='o', size=1)
-            #self.plot_widget.addItem(self.scatter)
-            #self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
-            # Add to the mainlayout
-            #self.plot_widget.plotItem.setAutoVisible(y=True)
 
     def update_plot(self):
-        '''Update plot dependend on checkbox state'''
+        '''Update plot dependend on checkbox state, size of points'''
 
         for i in range(len(self.alldata)):
             # Add some colors, loop repetitively over colorlist
             if i >= len(self.colorlist):
                 i = i % len(self.colorlist)
-            # self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=int(self.plot_size), color=self.colorlist[i]),
-            #                                   symbol='o', size=1)
-            self.scatter.setData(pen=pg.mkPen(width=int(self.plot_size)))
 
         for i in range(len(self.plot_widget.listDataItems())):
-            print(i)
-            self.plot_widget.listDataItems()[i].setBrush(QColor(240, 50, 20, 240))
-                #(pen=pg.mkPen(width=int(self.plot_size)))
-            #setData(pos=pos, size=size, brush=cmap.mapToQColor(brush))
 
             if not self.checkboxList[i].isChecked():
                 self.plot_widget.listDataItems()[i].hide() # hide if box is unchecked
+                self.scatterPlotItemList[i].setSize(self.point_size)
             else:
                 self.plot_widget.listDataItems()[i].show() # show if box is checked
-
-
-
-
+                self.scatterPlotItemList[i].setSize(self.point_size)
 
 
 
