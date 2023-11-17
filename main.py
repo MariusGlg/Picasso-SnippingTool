@@ -16,14 +16,14 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMenuBar, QAction, qApp
 
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
 
 
 
 
 import sys, os
 import PyQt5.QtWidgets
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QMainWindow, QMenu, QGridLayout,QCheckBox, QGroupBox
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QMainWindow, QMenu, QGridLayout,QCheckBox, QSlider, QLineEdit
 from PyQt5.QtCore import Qt
 
 
@@ -147,15 +147,7 @@ class MainWindow(QWidget):  # QWidget
         #self.plot_btn = QPushButton("plot")
         #btn_stylesheet = {background-color: orange; border-style: outset; border-width: 2px; border-radius: 15px; border-color: black; padding: 4px;}
         self.plot_btn = QPushButton("plot")
-        self.plot_btn.setStyleSheet("QPushButton"
-                             "{"
-                             "background-color : lightblue;"
-                             "}"
-                             "QPushButton::pressed"
-                             "{"
-                             "background-color : red;"border-radius: 15px;
-                             "}"
-                             )
+
         #self.plot_btn.setStyleSheet("border-radius: 15px;")
         self.draw_mask_btn = QPushButton("draw_ROI")
         self.draw_mask_btn.setCheckable(True)
@@ -178,11 +170,18 @@ class MainWindow(QWidget):  # QWidget
 
         # Add GridLayout for checkboxes
         self.checkboxGroup = QGridLayout()
+        #self.slider = QSlider(Qt.Horizontal)
+        self.px_plot = QLineEdit("px plot size", self)
+        self.px_plot.setGeometry(80, 80, 150, 40)
+        self.px_plot.returnPressed.connect(lambda: self.getLineEditInput())
+
 
         # Create Girdlayout and add Widgets
         self.gridLayout = QGridLayout()
         self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
+
         self.gridLayout.addLayout(self.checkboxGroup, 0, 5, 5, 2)
+        self.gridLayout.addWidget(self.px_plot, 5, 6, 1, 1)
         #self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
         self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
         self.gridLayout.addWidget(self.draw_mask_btn, 5, 1, 1, 1)
@@ -304,6 +303,12 @@ class MainWindow(QWidget):  # QWidget
             else:
                 print("is not checked")
 
+    def getLineEditInput(self):
+        self.plot_size = self.px_plot.text()
+        print(self.plot_size)
+        print(type(self.plot_size))
+        self.update_plot()
+
 
     def load(self):
         """load .hdf5_file"""
@@ -319,6 +324,7 @@ class MainWindow(QWidget):  # QWidget
 
         # Replace Label with PlotWidget
         self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
+        self.scatterPlotItemList = []
 
         # Loop over all data after plot_btn is pressed and generate plot_widget
         for i in range(len(self.alldata)):
@@ -326,19 +332,45 @@ class MainWindow(QWidget):  # QWidget
             # Add some colors, loop repetitively over colorlist
             if i >= len(self.colorlist):
                 i = i % len(self.colorlist)
-            self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=1, color=self.colorlist[i]),
+            self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=3, color=self.colorlist[i]),
                                               symbol='o', size=1)
             self.plot_widget.addItem(self.scatter)
             self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
             # Add to the mainlayout
             self.plot_widget.plotItem.setAutoVisible(y=True)
+            self.scatterPlotItemList.append(self.scatter)
+            sf=1
 
+
+    def update_plot_size(self):
+        for i in range(len(self.alldata)):
+            # Add some colors, loop repetitively over colorlist
+            if i >= len(self.colorlist):
+                i = i % len(self.colorlist)
+            self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=int(self.plot_size), color=self.colorlist[i]),
+                                              symbol='o', size=1)
+            #self.plot_widget.addItem(self.scatter)
+            #self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
+            # Add to the mainlayout
+            #self.plot_widget.plotItem.setAutoVisible(y=True)
 
     def update_plot(self):
         '''Update plot dependend on checkbox state'''
 
+        for i in range(len(self.alldata)):
+            # Add some colors, loop repetitively over colorlist
+            if i >= len(self.colorlist):
+                i = i % len(self.colorlist)
+            # self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=int(self.plot_size), color=self.colorlist[i]),
+            #                                   symbol='o', size=1)
+            self.scatter.setData(pen=pg.mkPen(width=int(self.plot_size)))
+
         for i in range(len(self.plot_widget.listDataItems())):
             print(i)
+            self.plot_widget.listDataItems()[i].setBrush(QColor(240, 50, 20, 240))
+                #(pen=pg.mkPen(width=int(self.plot_size)))
+            #setData(pos=pos, size=size, brush=cmap.mapToQColor(brush))
+
             if not self.checkboxList[i].isChecked():
                 self.plot_widget.listDataItems()[i].hide() # hide if box is unchecked
             else:
