@@ -36,28 +36,28 @@ col_dbscan = ["frame", "x", "y", "photons", "sx", "sy", "bg", "lpx", "lpy", "ell
 
 
 
-class PlotFigure(FigureCanvasQTAgg):
+# class PlotFigure(FigureCanvasQTAgg):
+#
+#     def __init__(self, parent=None, width=5, height=4, dpi=100):
+#         fig, ax = plt.subplots(constrained_layout=True)
+#         super(PlotFigure, self).__init__(fig)
+#
+#         self.canvas = pg.PlotWidget()
+#         self.canvas.plotItem.setAutoVisible(y=True)
+#
+#         self.canvas.setWindowTitle('Scatter plot')
+#         self.canvas.setAspectLocked(True)
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig, ax = plt.subplots(constrained_layout=True)
-        super(PlotFigure, self).__init__(fig)
 
-        self.canvas = pg.PlotWidget()
-        self.canvas.plotItem.setAutoVisible(y=True)
-
-        self.canvas.setWindowTitle('Scatter plot')
-        self.canvas.setAspectLocked(True)
-
-
-class Draw_Roi(QtWidgets.QMainWindow):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        #self.scene().sigMouseClicked.connect(self.mouse_clicked)
-        self.plot_widget = pg.PlotWidget()
-        self.plot_widget.scene().sigMouseClicked.connect(self.mouse_clicked)
-
-    def mouse_clicked(self, mouseClickEvent):
-        print('clicked plot 0x{:x}, event: {}'.format(id(self), mouseClickEvent))
+# class Draw_Roi(QtWidgets.QMainWindow):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         #self.scene().sigMouseClicked.connect(self.mouse_clicked)
+#         self.plot_widget = pg.PlotWidget()
+#         self.plot_widget.scene().sigMouseClicked.connect(self.mouse_clicked)
+#
+#     def mouse_clicked(self, mouseClickEvent):
+#         print('clicked plot 0x{:x}, event: {}'.format(id(self), mouseClickEvent))
 
 
 class RoiWindow(QWidget):
@@ -82,13 +82,12 @@ class FileWindow(QWidget):
         super().__init__()
         self.setWindowTitle("All files")
         self.checkboxlayout = QVBoxLayout(self)
-        self.checkboxstate = 2 # clicked, activated
+        self.checkboxstate = 2  # clicked, activated
 
     def update_checkbox(self):
         checkboxlist = []
         for i in reversed(range(self.checkboxlayout.count())):
             self.checkboxlayout.itemAt(i).widget().setParent(None)
-
         for i in range(len(self.alldata)):
             self.checkbox = QtWidgets.QCheckBox("{}".format(str(self.filepath_list[i])))
             self.checkbox.setChecked(True)
@@ -98,10 +97,8 @@ class FileWindow(QWidget):
 
     def click(self, state):
         if state == Qt.Checked:
-            #print("clicked", state)
             self.checkboxstate = state
         else:
-            #print("not clicked", state)
             self.checkboxstate = state
 
 
@@ -114,13 +111,13 @@ class MainWindow(QWidget):  # QWidget
         self.alldata = []
         self.filepath_list = []
 
-        # Menu Bar
-        #self.myQMenuBar = QtGui.QMenuBar(self)
-        #exitMenu = self.myQMenuBar.addMenu('File')
-        #self._createMenuBar()
+        # # Menu Bar
+        # self.myQMenuBar = QtGui.QMenuBar(self)
+        # exitMenu = self.myQMenuBar.addMenu('File')
+        # self._createMenuBar()
         # self._createActions()
         # self._createMenuBar()
-        #self._createToolBars()
+        # self._createToolBars()
 
 
         self.ROI_x = []
@@ -134,8 +131,6 @@ class MainWindow(QWidget):  # QWidget
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground("w")
 
-        #self.checkboxList[i].stateChanged.connect(self.box_changed)
-
     def initUI(self):
         # Set general properties
         self.setWindowTitle("SMLM Mask")
@@ -143,41 +138,32 @@ class MainWindow(QWidget):  # QWidget
         self.setStyleSheet("background-color: white;")
 
         # Create buttons
-
-        #self.plot_btn = QPushButton("plot")
-        #btn_stylesheet = {background-color: orange; border-style: outset; border-width: 2px; border-radius: 15px; border-color: black; padding: 4px;}
         self.plot_btn = QPushButton("plot")
-
-        #self.plot_btn.setStyleSheet("border-radius: 15px;")
         self.draw_mask_btn = QPushButton("draw_ROI")
         self.draw_mask_btn.setCheckable(True)
         self.create_mask_btn = QPushButton("cut")
         self.load_mask_btn = QPushButton("load_mask")
-        # self.create_mask_btn.setCheckable(True)
+        self.create_mask_btn.setCheckable(True)
         self.save_mask_btn = QPushButton("save mask")
         self.reset_btn = QPushButton("reset")
-
-
+        self.add_ROI_btn = QPushButton("add ROI")
+        self.remove_ROI_btn = QPushButton("remove ROI")
 
         # Create Label
         self.lbl = QLabel()
-        #self.lbl.setStyleSheet("background-color: lightgreen")
         self.lbl.setAlignment(Qt.AlignCenter)
         self.lbl.setText('\n\n Drop .HDF5 Files \n\n')
         self.lbl.setFont(QFont("Times font", 22))
-
         self.lbl.setStyleSheet("background-color: lightblue; border: 2px dashed;")
 
         # Add GridLayout for checkboxes
         self.checkboxGroup = QGridLayout()
-        #self.slider = QSlider(Qt.Horizontal)
-        #self.px_plot = QLineEdit("point size (0-20)", self)
         self.sp = QSpinBox()
         self.sp.setValue(1)
         self.sp.setRange(1,20)
-        #self.px_plot.setFixedWidth(100)
-        #self.px_plot.returnPressed.connect(lambda: self.getLineEditInput())
         self.sp.valueChanged.connect(self.getLineEditInput)
+
+        # Add button to add/remove ROI
 
 
         # Create Girdlayout and add Widgets
@@ -185,8 +171,9 @@ class MainWindow(QWidget):  # QWidget
         self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
 
         self.gridLayout.addLayout(self.checkboxGroup, 0, 5, 5, 2)
-        self.gridLayout.addWidget(self.sp, 5, 5, 1, 1)
-        #self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
+        self.gridLayout.addWidget(self.add_ROI_btn, 3, 5, 1, 1)
+        self.gridLayout.addWidget(self.remove_ROI_btn, 3, 6, 1, 1)
+        self.gridLayout.addWidget(self.sp, 4, 5, 1, 1)
         self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
         self.gridLayout.addWidget(self.draw_mask_btn, 5, 1, 1, 1)
         self.gridLayout.addWidget(self.create_mask_btn, 5, 2, 1, 1)
@@ -196,15 +183,14 @@ class MainWindow(QWidget):  # QWidget
         # Set Layout
         self.setLayout(self.gridLayout)
 
-
-
         # # Connect buttons to functions
         self.plot_btn.pressed.connect(self.init_Plot)
-        # self.draw_mask_btn.pressed.connect(self.create_mask)
-        # self.apply_mask_btn.pressed.connect(self.apply_mask)
+        self.draw_mask_btn.pressed.connect(self.create_mask)
+        #self.create_mask_btn.pressed.connect(self.apply_mask)
         # self.load_mask_btn.pressed.connect(self.load_mask)
         # self.save_mask_btn.pressed.connect(self.save_mask)
         # self.reset_btn.pressed.connect(self.reset)
+        self.add_ROI_btn.pressed.connect(self.create_mask)
 
     def _createActions(self):
         # Creating action using the first constructor
@@ -223,25 +209,25 @@ class MainWindow(QWidget):  # QWidget
         self.helpContentAction = QAction("&Help Content", self)
         self.aboutAction = QAction("&About", self)
 
-    def _createMenuBar(self):
-        menuBar = self.menuBar()
-        # Creating menus using a QMenu object
-        fileMenu = QMenu("&File", self)
-        menuBar.addMenu(fileMenu)
-        fileMenu.addAction(self.newAction)
-        fileMenu.addAction(self.openAction)
-        fileMenu.addAction(self.saveAction)
-        fileMenu.addAction(self.exitAction)
-
-        # Creating menus using a title
-        editMenu = menuBar.addMenu("&Edit")
-        editMenu.addAction(self.copyAction)
-        editMenu.addAction(self.pasteAction)
-        editMenu.addAction(self.cutAction)
-
-        helpMenu = menuBar.addMenu("&Help")
-        helpMenu.addAction(self.helpContentAction)
-        helpMenu.addAction(self.aboutAction)
+    # def _createMenuBar(self):
+    #     menuBar = self.menuBar()
+    #     # Creating menus using a QMenu object
+    #     fileMenu = QMenu("&File", self)
+    #     menuBar.addMenu(fileMenu)
+    #     fileMenu.addAction(self.newAction)
+    #     fileMenu.addAction(self.openAction)
+    #     fileMenu.addAction(self.saveAction)
+    #     fileMenu.addAction(self.exitAction)
+    #
+    #     # Creating menus using a title
+    #     editMenu = menuBar.addMenu("&Edit")
+    #     editMenu.addAction(self.copyAction)
+    #     editMenu.addAction(self.pasteAction)
+    #     editMenu.addAction(self.cutAction)
+    #
+    #     helpMenu = menuBar.addMenu("&Help")
+    #     helpMenu.addAction(self.helpContentAction)
+    #     helpMenu.addAction(self.aboutAction)
 
     # Drag and Drop
     def dragEnterEvent(self, event):
@@ -306,10 +292,8 @@ class MainWindow(QWidget):  # QWidget
                 print("is not checked")
 
     def getLineEditInput(self):
-        #self.point_size = self.px_plot.text()
+        """get input from QSpinBox and updates plot"""
         self.point_size = self.sp.value()
-        print(self.point_size)
-        print(type(self.point_size))
         self.update_plot()
 
 
@@ -323,11 +307,17 @@ class MainWindow(QWidget):  # QWidget
         return data_pd
 
     def init_Plot(self):
-        #Plot data
+        """Set initial plot settings"""
+
+        # disable plot button
+        self.plot_btn.setEnabled(False)
 
         #init_vals
         self.point_size = 1
 
+        # init line_plot
+        self.lineplot = pg.PlotCurveItem(pen=pg.mkPen(width=3, color="r"), symbol='+', size=1)
+        self.plot_widget.addItem(self.lineplot)
         # Replace Label with PlotWidget
         self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
         self.scatterPlotItemList = []
@@ -355,61 +345,73 @@ class MainWindow(QWidget):  # QWidget
             if i >= len(self.colorlist):
                 i = i % len(self.colorlist)
 
-        for i in range(len(self.plot_widget.listDataItems())):
-
-            if not self.checkboxList[i].isChecked():
-                self.plot_widget.listDataItems()[i].hide() # hide if box is unchecked
+            if not self.checkboxList[i].isChecked(): # + 1 -> first element is lineplot, is ignored
+                self.plot_widget.listDataItems()[i+1].hide() # hide if box is unchecked
                 self.scatterPlotItemList[i].setSize(self.point_size)
             else:
-                self.plot_widget.listDataItems()[i].show() # show if box is checked
+                self.plot_widget.listDataItems()[i+1].show() # show if box is checked
                 self.scatterPlotItemList[i].setSize(self.point_size)
-
 
 
 
     def update_file_paths(self):
         pass
 
-
-
-
-
     def create_mask(self):
-        pen = pg.mkPen(color=(255, 0, 0), width=3, style=QtCore.Qt.SolidLine)
-        self.lines = self.plot_widget.update_plot(self.ROI_x, self.ROI_y, pen=pen)
-        self.points = self.plot_widget.update_plot(self.ROI_x, self.ROI_y, pen=pen, symbol='+', symbolSize=10, symbolBrush=('b'))
-        self.plot_widget.scene().sigMouseClicked.connect(self.update_plot_mouseclick)
+        self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
 
-    def update_plot_mouseclick(self, mouseClickEvent):
+    def plot_ROI(self, mouseClickEvent):
+        """draws line on plot based on user defined mouseclick"""
+        self.roi_list = []
+
         if self.draw_mask_btn.isChecked():
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
                 mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
-                index_x = mouse_point.x()
-                index_y = mouse_point.y()
                 if mouseClickEvent.button() == 1:  # Add line if left mouse is clicked
                     self.ROI_x.append(mouse_point.x())
                     self.ROI_y.append(mouse_point.y())
-                    self.lines.setData(self.ROI_x, self.ROI_y)
-                    self.points.setData(self.ROI_x, self.ROI_y)
-                if mouseClickEvent.button() == 2:  # remove if richt mouse is clicked
-                    print("2")
+                    self.lineplot.setData(x=self.ROI_x, y=self.ROI_y)
+                if mouseClickEvent.button() == 2:  # remove if right mouse is clicked
                     self.ROI_x.pop(-1)
                     self.ROI_y.pop(-1)
-                    self.lines.setData(self.ROI_x, self.ROI_y)
-                    self.points.setData(self.ROI_x, self.ROI_y)
+                    self.lineplot.setData(x=self.ROI_x, y=self.ROI_y)
+                if mouseClickEvent.double():
+                    self.ROI_x.append(self.ROI_x[0])
+                    self.ROI_y.append(self.ROI_y[0])
+                    self.lineplot.setData(x=self.ROI_x, y=self.ROI_y)
+            self.roi_list.append([self.ROI_x, self.ROI_y])
+            print(self.roi_list)
+
+
 
     def apply_mask(self):
         self.ROI_x.append(self.ROI_x[0])
         self.ROI_y.append(self.ROI_y[0])
-        self.lines.setData(self.ROI_x, self.ROI_y)
-        self.plot_widget.update_plot(self.ROI_x, self.ROI_y, fillLevel=0, fillOutline=True)
-        polygon = np.stack((self.ROI_x, self.ROI_y), axis=1)
-        points = np.stack((self.data["x"].to_numpy(), self.data["y"].to_numpy()), axis=1)
-        self.points_inside = [check_points_in_ROI(point[0], point[1], polygon) for point in points]
-        # replace button interface
-        #self.change_btn_layout(self.buttonlayout, self.buttonlayout_ROI)
-        self.window2()
+
+
+        for i in range(len(self.alldata)):
+            # Add some colors, loop repetitively over colorlist
+            if i >= len(self.colorlist):
+                i = i % len(self.colorlist)
+
+            if not self.checkboxList[i].isChecked(): # + 1 -> first element is lineplot, is ignored
+                self.plot_widget.listDataItems()[i+1].hide() # hide if box is unchecked
+                self.scatterPlotItemList[i].setSize(self.point_size)
+            else:
+                self.plot_widget.listDataItems()[i+1].show() # show if box is checked
+                self.scatterPlotItemList[i].setSize(self.point_size)
+                self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
+
+        for i in range(len(self.alldata)):
+            #self.plot_widget.update_plot(self.ROI_x, self.ROI_y, fillLevel=0, fillOutline=True)
+
+            polygon = np.stack((self.ROI_x, self.ROI_y), axis=1)
+            points = np.stack((self.data["x"].to_numpy(), self.data["y"].to_numpy()), axis=1)
+            self.points_inside = [check_points_in_ROI(point[0], point[1], polygon) for point in points]
+            # replace button interface
+            #self.change_btn_layout(self.buttonlayout, self.buttonlayout_ROI)
+            self.window2()
 
         #self.btn_in_ROI.pressed.connect(self.get_locs_inside)
         #self.btn_outiside_ROI.pressed.connect(self.get_locs_outisde)
