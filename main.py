@@ -74,6 +74,27 @@ class RoiWindow(QWidget):
         self.buttonlayout2.addWidget(self.btn_apply)
         self.setLayout(self.buttonlayout2)
 
+class AcceptRoi(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("ROI")
+
+        self.layout = QVBoxLayout()
+        self.label_widget = QLabel("Accept ROI?")
+        self.btn_layout = QHBoxLayout()
+        self.accept_btn = QPushButton("Accept")
+        self.accept_btn.setCheckable(True)
+        self.clear_btn = QPushButton("Clear")
+        self.clear_btn.setCheckable(True)
+        self.btn_layout.addWidget(self.accept_btn)
+        self.btn_layout.addWidget(self.clear_btn)
+
+        self.layout.addWidget(self.label_widget)
+        self.layout.addLayout(self.btn_layout)
+
+        self.setLayout(self.layout)
+
+
 class FileWindow(QWidget):
     def __init__(self, alldata, filepath_list, colorlist):
         self.alldata = alldata
@@ -120,8 +141,15 @@ class MainWindow(QWidget):  # QWidget
         # self._createToolBars()
 
 
-        self.ROI_x = []
-        self.ROI_y = []
+        self.ROI_x = np.array([])
+        self.ROI_y = np.array([])
+        self.ROI_list = []
+        self.roi_coord_x = np.array([])
+        self.roi_coord_y = np.array([])
+        self.all_ROI_x = []
+        self.all_ROI_y = []
+
+
         self.colorlist = ["k", "b", "m", "b", "c", "w", "r"]
         # call all subclasses
 
@@ -130,6 +158,9 @@ class MainWindow(QWidget):  # QWidget
         #self.loaded_files = FileWindow(self.alldata, self.filepath_list, self.colorlist)
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground("w")
+
+        # initialize AcceptRoi
+        self.accept_win = AcceptRoi()
 
     def initUI(self):
         # Set general properties
@@ -147,7 +178,9 @@ class MainWindow(QWidget):  # QWidget
         self.save_mask_btn = QPushButton("save mask")
         self.reset_btn = QPushButton("reset")
         self.add_ROI_btn = QPushButton("add ROI")
+        #self.add_ROI_btn.setCheckable(True)
         self.remove_ROI_btn = QPushButton("remove ROI")
+        #self.remove_ROI_btn.setCheckable(True)
 
         # Create Label
         self.lbl = QLabel()
@@ -190,7 +223,7 @@ class MainWindow(QWidget):  # QWidget
         # self.load_mask_btn.pressed.connect(self.load_mask)
         # self.save_mask_btn.pressed.connect(self.save_mask)
         # self.reset_btn.pressed.connect(self.reset)
-        self.add_ROI_btn.pressed.connect(self.create_mask)
+        self.add_ROI_btn.pressed.connect(self.append_ROI)
 
     def _createActions(self):
         # Creating action using the first constructor
@@ -352,42 +385,68 @@ class MainWindow(QWidget):  # QWidget
                 self.plot_widget.listDataItems()[i+1].show() # show if box is checked
                 self.scatterPlotItemList[i].setSize(self.point_size)
 
-
-
     def update_file_paths(self):
         pass
 
     def create_mask(self):
+        # self.roi_coord_x = []
+        # self.roi_coord_y = []
         self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
 
     def plot_ROI(self, mouseClickEvent):
         """draws line on plot based on user defined mouseclick"""
-        self.roi_list = []
 
         if self.draw_mask_btn.isChecked():
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
                 mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
                 if mouseClickEvent.button() == 1:  # Add line if left mouse is clicked
-                    self.ROI_x.append(mouse_point.x())
-                    self.ROI_y.append(mouse_point.y())
-                    self.lineplot.setData(x=self.ROI_x, y=self.ROI_y)
+                    self.roi_coord_x = np.append(self.roi_coord_x, mouse_point.x())
+                    self.roi_coord_y = np.append(self.roi_coord_y, mouse_point.y())
+                    #print("1")
                 if mouseClickEvent.button() == 2:  # remove if right mouse is clicked
-                    self.ROI_x.pop(-1)
-                    self.ROI_y.pop(-1)
-                    self.lineplot.setData(x=self.ROI_x, y=self.ROI_y)
+                    self.roi_coord_x = self.roi_coord_x[:-1]
+                    self.roi_coord_y = self.roi_coord_y[:-1]
                 if mouseClickEvent.double():
-                    self.ROI_x.append(self.ROI_x[0])
-                    self.ROI_y.append(self.ROI_y[0])
-                    self.lineplot.setData(x=self.ROI_x, y=self.ROI_y)
-            self.roi_list.append([self.ROI_x, self.ROI_y])
-            print(self.roi_list)
+                    # Needs improvement, last and second last are doubled
+                    self.roi_coord_x = np.append(self.roi_coord_x, self.roi_coord_x[0])
+                    self.roi_coord_y = np.append(self.roi_coord_y, self.roi_coord_y[0])
+                    # after double click open new window: ask for acceptance or clearance of ROI
+                    self.accept_win.show()
+                    self.accept_win.accept_btn.pressed.connect(self.accept_ROI)
+                    self.accept_win.clear_btn.pressed.connect(self.clear_ROI)
+                    #print("double")
+
+
+        self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
+
+    def append_ROI(self):
+        """ Append ROI to all_ROI after ROI was accepted"""
+        sdf=1
+        if self.all_ROI_x == []:
+            self.all_ROI_x = self.roi_coord_x
+            self.all_ROI_y = self.roi_coord_y
+        else:
+            self.all_ROI_x = np.stack((self.all_ROI_x, self.roi_coord_x), axis=0)
+
+        self.roi_coord_x = []
+        self.roi_coord_y = []
+
+
+    def accept_ROI(self):
+        self.append_ROI()
+        self.accept_win.close()
+
+    def clear_ROI(self):
+        print("cleared")
+        self.accept_win.close()
+
 
 
 
     def apply_mask(self):
-        self.ROI_x.append(self.ROI_x[0])
-        self.ROI_y.append(self.ROI_y[0])
+        # self.ROI_x.append(self.ROI_x[0])
+        # self.ROI_y.append(self.ROI_y[0])
 
 
         for i in range(len(self.alldata)):
