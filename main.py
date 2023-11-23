@@ -426,21 +426,14 @@ class MainWindow(QWidget):  # QWidget
                     self.roi_coord_y = np.append(self.roi_coord_y, self.roi_coord_y[0])
                     self.roi_coordinates = np.vstack((self.roi_coord_x, self.roi_coord_y))
 
-
                     self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
 
-                    #self.plot_widget.painter.drawPolygon(self.roi_coord_x, self.roi_coord_y)
-
-
-                    print("double")
-                    sdf=1
                     # after double click open new window: ask for acceptance or clearance of ROI
                     self.accept_win.show()
                     self.accept_win.accept_btn.pressed.connect(self.accept_ROI)
                     self.accept_win.clear_btn.pressed.connect(self.clear_ROI)
                     #print("double")
 
-                print(self.roi_coordinates)
                 self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
                 self.plot_widget.plot(self.roi_coord_x, self.roi_coord_y, symbol='+', symbolSize=10)
 
@@ -459,6 +452,7 @@ class MainWindow(QWidget):  # QWidget
             sdf=1
         else:
             if self.add_ROI_btn.isChecked():
+                print("ROI", self.roi_coordinates)
                 self.all_roi_coordinates = np.append(self.all_roi_coordinates, self.roi_coordinates)
                 print("TwoROI", self.all_roi_coordinates)
                 #self.add_ROI_btn.setEnabled(False)
