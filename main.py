@@ -16,7 +16,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMenuBar, QAction, qApp
 
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtGui import QFont, QColor, QPainter
 
 
 
@@ -24,7 +24,7 @@ from PyQt5.QtGui import QFont, QColor
 import sys, os
 import PyQt5.QtWidgets
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QMainWindow, QMenu, QGridLayout,QCheckBox, QSlider, QLineEdit, QSpinBox
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QPoint
 
 
 col_dbcluster = {0: "groups", 1: "convex_hull", 2: "area", 3: "mean_frame", 4: "com_x", 5: "com_y", 6: "std_frame",
@@ -140,14 +140,14 @@ class MainWindow(QWidget):  # QWidget
         # self._createMenuBar()
         # self._createToolBars()
 
-
-        self.ROI_x = np.array([])
-        self.ROI_y = np.array([])
-        self.ROI_list = []
-        self.roi_coord_x = np.array([])
-        self.roi_coord_y = np.array([])
-        self.all_ROI_x = []
-        self.all_ROI_y = []
+        self.all_roi_coordinates = np.array([])
+        # self.ROI_x = np.array([])
+        # self.ROI_y = np.array([])
+        # self.ROI_list = []
+        # self.roi_coord_x = np.array([])
+        # self.roi_coord_y = np.array([])
+        # self.all_ROI_x = []
+        # self.all_ROI_y = []
 
 
         self.colorlist = ["k", "b", "m", "b", "c", "w", "r"]
@@ -178,7 +178,7 @@ class MainWindow(QWidget):  # QWidget
         self.save_mask_btn = QPushButton("save mask")
         self.reset_btn = QPushButton("reset")
         self.add_ROI_btn = QPushButton("add ROI")
-        #self.add_ROI_btn.setCheckable(True)
+        self.add_ROI_btn.setCheckable(True)
         self.remove_ROI_btn = QPushButton("remove ROI")
         #self.remove_ROI_btn.setCheckable(True)
 
@@ -223,7 +223,7 @@ class MainWindow(QWidget):  # QWidget
         # self.load_mask_btn.pressed.connect(self.load_mask)
         # self.save_mask_btn.pressed.connect(self.save_mask)
         # self.reset_btn.pressed.connect(self.reset)
-        self.add_ROI_btn.pressed.connect(self.append_ROI)
+        self.add_ROI_btn.pressed.connect(self.create_mask)
 
     def _createActions(self):
         # Creating action using the first constructor
@@ -349,8 +349,12 @@ class MainWindow(QWidget):  # QWidget
         self.point_size = 1
 
         # init line_plot
-        self.lineplot = pg.PlotCurveItem(pen=pg.mkPen(width=3, color="r"), symbol='+', size=1)
+        self.lineplot = pg.PlotCurveItem(pen=pg.mkPen(width=3, color="r"))
+
+        self.painter = QtGui.QPainter(self)
         self.plot_widget.addItem(self.lineplot)
+        #self.plot_widget.addItem(self.painter)
+
         # Replace Label with PlotWidget
         self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
         self.scatterPlotItemList = []
@@ -364,7 +368,7 @@ class MainWindow(QWidget):  # QWidget
             self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=1, color=self.colorlist[i]),
                                               symbol='o', size=self.point_size)
             self.plot_widget.addItem(self.scatter)
-            self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
+            self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"], marker="+", size=5)
             # Add to the mainlayout
             self.plot_widget.plotItem.setAutoVisible(y=True)
             self.scatterPlotItemList.append(self.scatter)
@@ -389,52 +393,80 @@ class MainWindow(QWidget):  # QWidget
         pass
 
     def create_mask(self):
-        # self.roi_coord_x = []
-        # self.roi_coord_y = []
+        self.roi_coord_x = []
+        self.roi_coord_y = []
+        self.roi_coordinates = []
         self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
+        sdf=1
+
 
     def plot_ROI(self, mouseClickEvent):
         """draws line on plot based on user defined mouseclick"""
 
         if self.draw_mask_btn.isChecked():
+            print("is draw is checked")
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
-                mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
+                self.mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
                 if mouseClickEvent.button() == 1:  # Add line if left mouse is clicked
-                    self.roi_coord_x = np.append(self.roi_coord_x, mouse_point.x())
-                    self.roi_coord_y = np.append(self.roi_coord_y, mouse_point.y())
+                    self.roi_coord_x = np.append(self.roi_coord_x, self.mouse_point.x())
+                    self.roi_coord_y = np.append(self.roi_coord_y, self.mouse_point.y())
+                    self.roi_coordinates = np.vstack((self.roi_coord_x, self.roi_coord_y))
+                    self.scatter = np.vstack((self.roi_coord_x, self.roi_coord_y))
+                    #print(self.roi_coordinates)
                     #print("1")
+
                 if mouseClickEvent.button() == 2:  # remove if right mouse is clicked
                     self.roi_coord_x = self.roi_coord_x[:-1]
                     self.roi_coord_y = self.roi_coord_y[:-1]
+                    self.roi_coordinates = np.vstack((self.roi_coord_x, self.roi_coord_y))
                 if mouseClickEvent.double():
                     # Needs improvement, last and second last are doubled
                     self.roi_coord_x = np.append(self.roi_coord_x, self.roi_coord_x[0])
                     self.roi_coord_y = np.append(self.roi_coord_y, self.roi_coord_y[0])
+                    self.roi_coordinates = np.vstack((self.roi_coord_x, self.roi_coord_y))
+
+
+                    self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
+
+                    #self.plot_widget.painter.drawPolygon(self.roi_coord_x, self.roi_coord_y)
+
+
+                    print("double")
+                    sdf=1
                     # after double click open new window: ask for acceptance or clearance of ROI
                     self.accept_win.show()
                     self.accept_win.accept_btn.pressed.connect(self.accept_ROI)
                     self.accept_win.clear_btn.pressed.connect(self.clear_ROI)
                     #print("double")
 
+                print(self.roi_coordinates)
+                self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
+                self.plot_widget.plot(self.roi_coord_x, self.roi_coord_y, symbol='+', symbolSize=10)
 
-        self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
-
-    def append_ROI(self):
-        """ Append ROI to all_ROI after ROI was accepted"""
-        sdf=1
-        if self.all_ROI_x == []:
-            self.all_ROI_x = self.roi_coord_x
-            self.all_ROI_y = self.roi_coord_y
-        else:
-            self.all_ROI_x = np.stack((self.all_ROI_x, self.roi_coord_x), axis=0)
-
-        self.roi_coord_x = []
-        self.roi_coord_y = []
+                #self.draw_mask_btn.setEnabled(False)
+                #print("is draw is NOT checked")
 
 
     def accept_ROI(self):
-        self.append_ROI()
+        self.draw_mask_btn.setEnabled(False)  # Disable if ROI is completed and accepted
+        #self.all_roi_coordinates = self.roi
+        #self.all_roi_coordinates.append(self.roi_coordinates)
+        print(self.all_roi_coordinates.size)
+        if self.all_roi_coordinates.size == 0:
+            self.all_roi_coordinates = self.roi_coordinates
+            print("firstROI", self.all_roi_coordinates)
+            sdf=1
+        else:
+            if self.add_ROI_btn.isChecked():
+                self.all_roi_coordinates = np.append(self.all_roi_coordinates, self.roi_coordinates)
+                print("TwoROI", self.all_roi_coordinates)
+                #self.add_ROI_btn.setEnabled(False)
+                sdf=1
+                return
+        sdf=1
+        self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y, pen='g', marker='o')
+
         self.accept_win.close()
 
     def clear_ROI(self):
@@ -460,7 +492,7 @@ class MainWindow(QWidget):  # QWidget
             else:
                 self.plot_widget.listDataItems()[i+1].show() # show if box is checked
                 self.scatterPlotItemList[i].setSize(self.point_size)
-                self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
+                self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"], marker='o')
 
         for i in range(len(self.alldata)):
             #self.plot_widget.update_plot(self.ROI_x, self.ROI_y, fillLevel=0, fillOutline=True)
