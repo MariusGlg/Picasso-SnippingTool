@@ -131,6 +131,7 @@ class MainWindow(QWidget):  # QWidget
         self.data_filtered = []
         self.alldata = []
         self.filepath_list = []
+        self.roi_list = []
 
         # # Menu Bar
         # self.myQMenuBar = QtGui.QMenuBar(self)
@@ -140,24 +141,15 @@ class MainWindow(QWidget):  # QWidget
         # self._createMenuBar()
         # self._createToolBars()
 
-        self.all_roi_coordinates = np.array([])
-        # self.ROI_x = np.array([])
-        # self.ROI_y = np.array([])
-        # self.ROI_list = []
-        # self.roi_coord_x = np.array([])
-        # self.roi_coord_y = np.array([])
-        # self.all_ROI_x = []
-        # self.all_ROI_y = []
-
-
-        self.colorlist = ["k", "b", "m", "b", "c", "w", "r"]
+        self.colorlist = ["c", "b", "k", "b", "m", "w", "r"]
         # call all subclasses
 
         self.initUI()
         self.w = RoiWindow()
+
         #self.loaded_files = FileWindow(self.alldata, self.filepath_list, self.colorlist)
-        self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setBackground("w")
+        # self.plot_widget = pg.PlotWidget()
+        # self.plot_widget.setBackground("w")
 
         # initialize AcceptRoi
         self.accept_win = AcceptRoi()
@@ -179,6 +171,8 @@ class MainWindow(QWidget):  # QWidget
         self.reset_btn = QPushButton("reset")
         self.add_ROI_btn = QPushButton("add ROI")
         self.add_ROI_btn.setCheckable(True)
+        #self.add_ROI_btn.setEnabled(True)
+        self.disableBtn(self.add_ROI_btn)
         self.remove_ROI_btn = QPushButton("remove ROI")
         #self.remove_ROI_btn.setCheckable(True)
 
@@ -192,12 +186,11 @@ class MainWindow(QWidget):  # QWidget
         # Add GridLayout for checkboxes
         self.checkboxGroup = QGridLayout()
         self.sp = QSpinBox()
-        self.sp.setValue(1)
-        self.sp.setRange(1,20)
+        # size of points in plot
+        self.point_size = 2
+        self.sp.setValue(self.point_size)
+        self.sp.setRange(1,50)
         self.sp.valueChanged.connect(self.getLineEditInput)
-
-        # Add button to add/remove ROI
-
 
         # Create Girdlayout and add Widgets
         self.gridLayout = QGridLayout()
@@ -224,6 +217,10 @@ class MainWindow(QWidget):  # QWidget
         # self.save_mask_btn.pressed.connect(self.save_mask)
         # self.reset_btn.pressed.connect(self.reset)
         self.add_ROI_btn.pressed.connect(self.create_mask)
+
+        # # create PlotWidget
+        # self.plot_widget = pg.PlotWidget()
+        # self.plot_widget.setBackground("w")
 
     def _createActions(self):
         # Creating action using the first constructor
@@ -296,9 +293,11 @@ class MainWindow(QWidget):  # QWidget
         if len(self.alldata) == 1:
             self.lbl.setText("{} file loaded".format(len(self.alldata)))  # update text
             self.setStyleSheet('''QLabel{border: 4px dashed #aaa}''')
+            self.setStyleSheet("background-color: white;")
         else:
             self.lbl.setText("{} files loaded".format(len(self.alldata)))  # update text
             self.setStyleSheet('''QLabel{border: 4px dashed #aaa}''')
+            self.setStyleSheet("background-color: white;")
 
 
     def update_checkbox(self):
@@ -316,14 +315,6 @@ class MainWindow(QWidget):  # QWidget
         for i in range(len(self.checkboxList)):
             self.checkboxList[i].stateChanged.connect(self.update_plot)
 
-
-    def checkState(self):
-        for i in range(len(self.checkboxList)):
-            if self.checkboxList[i].isChecked():
-                print("is checked")
-            else:
-                print("is not checked")
-
     def getLineEditInput(self):
         """get input from QSpinBox and updates plot"""
         self.point_size = self.sp.value()
@@ -336,20 +327,27 @@ class MainWindow(QWidget):  # QWidget
             key = list(locs_file.keys())[0]  # get key name
             locs = locs_file[str(key)][...]
         data_pd = pd.DataFrame(locs)
-
         return data_pd
+
+    def disableBtn(self, b):
+        # disable button clicks
+        b.setEnabled(False)
+
+    def enableBtn(self, b):
+        b.setEnabled(True)
 
     def init_Plot(self):
         """Set initial plot settings"""
 
-        # disable plot button
-        self.plot_btn.setEnabled(False)
+        # create PlotWidget
+        self.plot_widget = pg.PlotWidget()
+        self.plot_widget.setBackground("w")
 
-        #init_vals
-        self.point_size = 1
+        # disable plot button
+        self.disableBtn(self.plot_btn)
 
         # init line_plot
-        self.lineplot = pg.PlotCurveItem(pen=pg.mkPen(width=3, color="r"))
+        self.lineplot = pg.PlotCurveItem(pen=pg.mkPen(width=3, color="k"))
 
         self.painter = QtGui.QPainter(self)
         self.plot_widget.addItem(self.lineplot)
@@ -361,7 +359,6 @@ class MainWindow(QWidget):  # QWidget
 
         # Loop over all data after plot_btn is pressed and generate plot_widget
         for i in range(len(self.alldata)):
-
             # Add some colors, loop repetitively over colorlist
             if i >= len(self.colorlist):
                 i = i % len(self.colorlist)
@@ -393,74 +390,52 @@ class MainWindow(QWidget):  # QWidget
         pass
 
     def create_mask(self):
-        self.roi_coord_x = []
-        self.roi_coord_y = []
-        self.roi_coordinates = []
-        self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
-        sdf=1
+        self.x = []
+        self.y = []
+        self.xy_list = []
+        self.disableBtn(self.draw_mask_btn)
 
+        self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
 
     def plot_ROI(self, mouseClickEvent):
         """draws line on plot based on user defined mouseclick"""
 
-        if self.draw_mask_btn.isChecked():
-            print("is draw is checked")
+        if self.draw_mask_btn.isEnabled() == False:  # main switch to allow drawing in scene
+            #print("is draw is checked")
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
                 self.mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
                 if mouseClickEvent.button() == 1:  # Add line if left mouse is clicked
-                    self.roi_coord_x = np.append(self.roi_coord_x, self.mouse_point.x())
-                    self.roi_coord_y = np.append(self.roi_coord_y, self.mouse_point.y())
-                    self.roi_coordinates = np.vstack((self.roi_coord_x, self.roi_coord_y))
-                    self.scatter = np.vstack((self.roi_coord_x, self.roi_coord_y))
-                    #print(self.roi_coordinates)
-                    #print("1")
-
+                    self.x.append(self.mouse_point.x())
+                    self.y.append(self.mouse_point.y())
                 if mouseClickEvent.button() == 2:  # remove if right mouse is clicked
-                    self.roi_coord_x = self.roi_coord_x[:-1]
-                    self.roi_coord_y = self.roi_coord_y[:-1]
-                    self.roi_coordinates = np.vstack((self.roi_coord_x, self.roi_coord_y))
+                    self.x = self.x[:-1]
+                    self.y = self.y[:-1]
+                    self.xy_list = np.vstack((self.x, self.y))
                 if mouseClickEvent.double():
-                    # Needs improvement, last and second last are doubled
-                    self.roi_coord_x = np.append(self.roi_coord_x, self.roi_coord_x[0])
-                    self.roi_coord_y = np.append(self.roi_coord_y, self.roi_coord_y[0])
-                    self.roi_coordinates = np.vstack((self.roi_coord_x, self.roi_coord_y))
-
-                    self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
+                    self.x.append(self.x[0])  # add first x-position to close ROI
+                    self.y.append(self.y[0])  # add first y-position to close ROI
+                    self.xy_list.append(self.x)  # append to xy_list
+                    self.xy_list.append(self.y)
+                    self.lineplot.setData(x=self.x, y=self.y)
 
                     # after double click open new window: ask for acceptance or clearance of ROI
                     self.accept_win.show()
                     self.accept_win.accept_btn.pressed.connect(self.accept_ROI)
                     self.accept_win.clear_btn.pressed.connect(self.clear_ROI)
-                    #print("double")
 
-                self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
-                self.plot_widget.plot(self.roi_coord_x, self.roi_coord_y, symbol='+', symbolSize=10)
+
+                self.lineplot.setData(x=self.x, y=self.y)
+                self.plot_widget.plot(self.x, self.y, symbol='+', symbolSize=10)
 
                 #self.draw_mask_btn.setEnabled(False)
                 #print("is draw is NOT checked")
 
 
     def accept_ROI(self):
-        self.draw_mask_btn.setEnabled(False)  # Disable if ROI is completed and accepted
-        #self.all_roi_coordinates = self.roi
-        #self.all_roi_coordinates.append(self.roi_coordinates)
-        print(self.all_roi_coordinates.size)
-        if self.all_roi_coordinates.size == 0:
-            self.all_roi_coordinates = self.roi_coordinates
-            print("firstROI", self.all_roi_coordinates)
-            sdf=1
-        else:
-            if self.add_ROI_btn.isChecked():
-                print("ROI", self.roi_coordinates)
-                self.all_roi_coordinates = np.append(self.all_roi_coordinates, self.roi_coordinates)
-                print("TwoROI", self.all_roi_coordinates)
-                #self.add_ROI_btn.setEnabled(False)
-                sdf=1
-                return
-        sdf=1
-        self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y, pen='g', marker='o')
-
+          # Disable if ROI is completed and accepted
+        self.roi_list.append((self.xy_list))
+        self.enableBtn(self.add_ROI_btn)
         self.accept_win.close()
 
     def clear_ROI(self):
