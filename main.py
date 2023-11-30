@@ -172,6 +172,7 @@ class MainWindow(QWidget):  # QWidget
         self.save_mask_btn = QPushButton("save mask")
         self.reset_btn = QPushButton("reset")
         self.add_ROI_btn = QPushButton("add ROI")
+        self.add_ROI_btn.setCheckable(True)
         self.disableBtn(self.add_ROI_btn)
         self.remove_ROI_btn = QPushButton("remove ROI")
         #self.remove_ROI_btn.setCheckable(True)
@@ -211,12 +212,13 @@ class MainWindow(QWidget):  # QWidget
 
         # # Connect buttons to functions
         self.plot_btn.pressed.connect(self.init_Plot)
-        self.draw_btn.pressed.connect(self.create_mask)
+        self.draw_btn.clicked.connect(self.draw)
+        #self.draw_btn.clicked.connect(self.create_mask)
         #self.create_mask_btn.pressed.connect(self.apply_mask)
         # self.load_mask_btn.pressed.connect(self.load_mask)
         # self.save_mask_btn.pressed.connect(self.save_mask)
         # self.reset_btn.pressed.connect(self.reset)
-        self.add_ROI_btn.pressed.connect(self.create_mask)
+        self.add_ROI_btn.clicked.connect(self.draw)
 
         # # create PlotWidget
         # self.plot_widget = pg.PlotWidget()
@@ -389,12 +391,23 @@ class MainWindow(QWidget):  # QWidget
     def update_file_paths(self):
         pass
 
+    def draw(self):
+        self.x = []
+        self.y = []
+        self.xy_list = []
+        if self.draw_btn.isChecked():
+            self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
+
+        if self.add_ROI_btn.isChecked():
+            print("Add btn is checked")
+
+
     def create_mask(self):
         self.x = []
         self.y = []
         self.xy_list = []
-        if not self.draw_btn.isChecked():
-            print("draw ROI is down")
+        if self.draw_btn.isChecked():
+            print("draw btn is down")
 
         #print(self.add_ROI_btn.isChecked())
         if self.add_ROI_btn.isDown():
