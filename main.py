@@ -84,6 +84,8 @@ class AcceptRoi(QWidget):
         self.btn_layout = QHBoxLayout()
         self.accept_btn = QPushButton("Accept")
         self.accept_btn.setCheckable(True)
+
+        #self.accept_btn.setEnabled(True)
         self.clear_btn = QPushButton("Clear")
         self.clear_btn.setCheckable(True)
         self.btn_layout.addWidget(self.accept_btn)
@@ -162,16 +164,14 @@ class MainWindow(QWidget):  # QWidget
 
         # Create buttons
         self.plot_btn = QPushButton("plot")
-        self.draw_mask_btn = QPushButton("draw_ROI")
-        self.draw_mask_btn.setCheckable(True)
+        self.draw_btn = QPushButton("draw_ROI")
+        self.draw_btn.setCheckable(True)
         self.create_mask_btn = QPushButton("cut")
         self.load_mask_btn = QPushButton("load_mask")
         self.create_mask_btn.setCheckable(True)
         self.save_mask_btn = QPushButton("save mask")
         self.reset_btn = QPushButton("reset")
         self.add_ROI_btn = QPushButton("add ROI")
-        self.add_ROI_btn.setCheckable(True)
-        #self.add_ROI_btn.setEnabled(True)
         self.disableBtn(self.add_ROI_btn)
         self.remove_ROI_btn = QPushButton("remove ROI")
         #self.remove_ROI_btn.setCheckable(True)
@@ -201,7 +201,7 @@ class MainWindow(QWidget):  # QWidget
         self.gridLayout.addWidget(self.remove_ROI_btn, 3, 6, 1, 1)
         self.gridLayout.addWidget(self.sp, 4, 5, 1, 1)
         self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
-        self.gridLayout.addWidget(self.draw_mask_btn, 5, 1, 1, 1)
+        self.gridLayout.addWidget(self.draw_btn, 5, 1, 1, 1)
         self.gridLayout.addWidget(self.create_mask_btn, 5, 2, 1, 1)
         self.gridLayout.addWidget(self.save_mask_btn, 5, 3, 1, 1)
         self.gridLayout.addWidget(self.reset_btn, 5, 4, 1, 1)
@@ -211,7 +211,7 @@ class MainWindow(QWidget):  # QWidget
 
         # # Connect buttons to functions
         self.plot_btn.pressed.connect(self.init_Plot)
-        self.draw_mask_btn.pressed.connect(self.create_mask)
+        self.draw_btn.pressed.connect(self.create_mask)
         #self.create_mask_btn.pressed.connect(self.apply_mask)
         # self.load_mask_btn.pressed.connect(self.load_mask)
         # self.save_mask_btn.pressed.connect(self.save_mask)
@@ -393,14 +393,20 @@ class MainWindow(QWidget):  # QWidget
         self.x = []
         self.y = []
         self.xy_list = []
-        self.disableBtn(self.draw_mask_btn)
+        if not self.draw_btn.isChecked():
+            print("draw ROI is down")
+
+        #print(self.add_ROI_btn.isChecked())
+        if self.add_ROI_btn.isDown():
+            print("is down")
+            self.accept_win.accept_btn.setChecked(False)  # reset accept_btn
 
         self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
 
     def plot_ROI(self, mouseClickEvent):
         """draws line on plot based on user defined mouseclick"""
 
-        if self.draw_mask_btn.isEnabled() == False:  # main switch to allow drawing in scene
+        if self.draw_btn.isChecked() and not self.accept_win.accept_btn.isChecked():  # main switch to allow drawing in scene
             #print("is draw is checked")
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
@@ -408,16 +414,20 @@ class MainWindow(QWidget):  # QWidget
                 if mouseClickEvent.button() == 1:  # Add line if left mouse is clicked
                     self.x.append(self.mouse_point.x())
                     self.y.append(self.mouse_point.y())
+                    print(self.x)
                 if mouseClickEvent.button() == 2:  # remove if right mouse is clicked
                     self.x = self.x[:-1]
                     self.y = self.y[:-1]
                     self.xy_list = np.vstack((self.x, self.y))
                 if mouseClickEvent.double():
+                    self.x = self.x[:-1]
+                    self.y = self.y[:-1]
                     self.x.append(self.x[0])  # add first x-position to close ROI
                     self.y.append(self.y[0])  # add first y-position to close ROI
                     self.xy_list.append(self.x)  # append to xy_list
                     self.xy_list.append(self.y)
                     self.lineplot.setData(x=self.x, y=self.y)
+                    print(self.xy_list)
 
                     # after double click open new window: ask for acceptance or clearance of ROI
                     self.accept_win.show()
@@ -428,14 +438,19 @@ class MainWindow(QWidget):  # QWidget
                 self.lineplot.setData(x=self.x, y=self.y)
                 self.plot_widget.plot(self.x, self.y, symbol='+', symbolSize=10)
 
-                #self.draw_mask_btn.setEnabled(False)
-                #print("is draw is NOT checked")
-
 
     def accept_ROI(self):
           # Disable if ROI is completed and accepted
-        self.roi_list.append((self.xy_list))
+        #self.roi_list.append((self.xy_list))
         self.enableBtn(self.add_ROI_btn)
+        if self.accept_win.accept_btn.isDown():
+            self.accept_win.accept_btn.setChecked(True)
+        # if accept btn is clicked -> self.roi_list.append((self.xy_list))
+        if self.accept_win.accept_btn.isChecked():
+            self.roi_list.append((self.xy_list))
+            self.accept_win.accept_btn.setChecked(False)
+            #print(self.roi_list)
+
         self.accept_win.close()
 
     def clear_ROI(self):
@@ -518,7 +533,7 @@ class MainWindow(QWidget):  # QWidget
 
     def reset(self):
         self.plot_data_btn.setDisabled(False)  # disable button
-        self.draw_mask_btn.setCheckable(False)
+        self.draw_btn.setCheckable(False)
         self.horizontal_layout.replaceWidget(self.plot_widget, self.lbl)
         self.ROI_x = []
         self.ROI_y = []
