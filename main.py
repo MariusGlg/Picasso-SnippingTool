@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import QMenuBar, QAction, qApp
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import QFont, QColor, QPainter
+#from shapely.geometry import Polygon
 
 
 
@@ -126,6 +127,11 @@ class FileWindow(QWidget):
 
 
 class MainWindow(QWidget):  # QWidget
+
+    right_clicked = QtCore.Signal()
+    left_clicked = QtCore.Signal()
+    double_clicked = QtCore.Signal()
+
     def __init__(self):
         super(MainWindow, self).__init__()
         # self.resize(600, 600)
@@ -149,9 +155,13 @@ class MainWindow(QWidget):  # QWidget
         self.initUI()
         self.w = RoiWindow()
 
-        #self.loaded_files = FileWindow(self.alldata, self.filepath_list, self.colorlist)
-        # self.plot_widget = pg.PlotWidget()
-        # self.plot_widget.setBackground("w")
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.setInterval(250)
+        self.timer.timeout.connect(self.timeout)
+
+        self.is_double = False
+        self.is_left_click = True
 
         # initialize AcceptRoi
         self.accept_win = AcceptRoi()
@@ -164,16 +174,16 @@ class MainWindow(QWidget):  # QWidget
 
         # Create buttons
         self.plot_btn = QPushButton("plot")
-        self.draw_btn = QPushButton("draw_ROI")
+        self.draw_btn = QPushButton("draw/add ROI")
         self.draw_btn.setCheckable(True)
         self.create_mask_btn = QPushButton("cut")
         self.load_mask_btn = QPushButton("load_mask")
         self.create_mask_btn.setCheckable(True)
         self.save_mask_btn = QPushButton("save mask")
         self.reset_btn = QPushButton("reset")
-        self.add_ROI_btn = QPushButton("add ROI")
-        self.add_ROI_btn.setCheckable(True)
-        self.disableBtn(self.add_ROI_btn)
+        #self.add_ROI_btn = QPushButton("add ROI")
+        #self.add_ROI_btn.setCheckable(True)
+        #self.disableBtn(self.add_ROI_btn)
         self.remove_ROI_btn = QPushButton("remove ROI")
         #self.remove_ROI_btn.setCheckable(True)
 
@@ -187,6 +197,7 @@ class MainWindow(QWidget):  # QWidget
         # Add GridLayout for checkboxes
         self.checkboxGroup = QGridLayout()
         self.sp = QSpinBox()
+        self.sp_lbl = QLabel("plot size")
         # size of points in plot
         self.point_size = 2
         self.sp.setValue(self.point_size)
@@ -195,17 +206,19 @@ class MainWindow(QWidget):  # QWidget
 
         # Create Girdlayout and add Widgets
         self.gridLayout = QGridLayout()
-        self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
+        #self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
+        self.gridLayout.addWidget(self.lbl, 0, 0, 10, 10)
 
-        self.gridLayout.addLayout(self.checkboxGroup, 0, 5, 5, 2)
-        self.gridLayout.addWidget(self.add_ROI_btn, 3, 5, 1, 1)
-        self.gridLayout.addWidget(self.remove_ROI_btn, 3, 6, 1, 1)
-        self.gridLayout.addWidget(self.sp, 4, 5, 1, 1)
-        self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
-        self.gridLayout.addWidget(self.draw_btn, 5, 1, 1, 1)
-        self.gridLayout.addWidget(self.create_mask_btn, 5, 2, 1, 1)
-        self.gridLayout.addWidget(self.save_mask_btn, 5, 3, 1, 1)
-        self.gridLayout.addWidget(self.reset_btn, 5, 4, 1, 1)
+        self.gridLayout.addLayout(self.checkboxGroup, 0, 10, 3, 1)
+        #self.gridLayout.addWidget(self.add_ROI_btn, 3, 5, 1, 1)
+        self.gridLayout.addWidget(self.remove_ROI_btn, 7, 10, 1, 1)
+        self.gridLayout.addWidget(self.sp_lbl, 8, 10, 1, 1, alignment = Qt.AlignCenter )
+        self.gridLayout.addWidget(self.sp, 9, 10, 1, 1)
+        self.gridLayout.addWidget(self.plot_btn, 10, 0, 1, 2)
+        self.gridLayout.addWidget(self.draw_btn, 10, 2, 1, 2)
+        self.gridLayout.addWidget(self.create_mask_btn, 10, 4, 1, 2)
+        self.gridLayout.addWidget(self.save_mask_btn, 10, 6, 1, 2)
+        self.gridLayout.addWidget(self.reset_btn, 10, 8, 1, 2)
 
         # Set Layout
         self.setLayout(self.gridLayout)
@@ -218,7 +231,7 @@ class MainWindow(QWidget):  # QWidget
         # self.load_mask_btn.pressed.connect(self.load_mask)
         # self.save_mask_btn.pressed.connect(self.save_mask)
         # self.reset_btn.pressed.connect(self.reset)
-        self.add_ROI_btn.clicked.connect(self.draw)
+        #self.add_ROI_btn.clicked.connect(self.draw)
 
         # # create PlotWidget
         # self.plot_widget = pg.PlotWidget()
@@ -234,7 +247,7 @@ class MainWindow(QWidget):  # QWidget
         self.saveAction = QAction("&Save", self)
         self.exitAction = QAction("&Exit", self)
         # Edit
-        self.copyAction = QAction("&Add_ROI", self)
+        #self.copyAction = QAction("&Add_ROI", self)
         self.pasteAction = QAction("&Delete_ROI", self)
         self.cutAction = QAction("&Invert_ROI", self)
         # Help
@@ -338,6 +351,30 @@ class MainWindow(QWidget):  # QWidget
     def enableBtn(self, b):
         b.setEnabled(True)
 
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.MouseButtonPress:
+            if not self.timer.isActive():
+                self.timer.start()
+
+            self.is_left_click = False
+            if event.button() == QtCore.Qt.LeftButton:
+                self.is_left_click = True
+            return True
+        elif event.type() == QtCore.QEvent.MouseButtonDblClick:
+            self.is_double = True
+            return True
+        return False
+
+    def timeout(self):
+        if self.is_double:
+            self.double_clicked.emit()
+        else:
+            if self.is_left_click:
+                self.left_clicked.emit()
+            else:
+                self.right_clicked.emit()
+        self.is_double = False
+
     def init_Plot(self):
         """Set initial plot settings"""
 
@@ -398,20 +435,14 @@ class MainWindow(QWidget):  # QWidget
         if self.draw_btn.isChecked():
             self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
 
-        if self.add_ROI_btn.isChecked():
-            print("Add btn is checked")
-
-
     def create_mask(self):
         self.x = []
         self.y = []
         self.xy_list = []
-        if self.draw_btn.isChecked():
-            print("draw btn is down")
 
-        #print(self.add_ROI_btn.isChecked())
-        if self.add_ROI_btn.isDown():
+        if self.accept_win.accept_btn.isChecked:
             print("is down")
+            sdf=1
             self.accept_win.accept_btn.setChecked(False)  # reset accept_btn
 
         self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
@@ -419,7 +450,11 @@ class MainWindow(QWidget):  # QWidget
     def plot_ROI(self, mouseClickEvent):
         """draws line on plot based on user defined mouseclick"""
 
-        if self.draw_btn.isChecked() and not self.accept_win.accept_btn.isChecked():  # main switch to allow drawing in scene
+        if self.draw_btn.isChecked():  # main switch to allow drawing in scene,  -> and not self.accept_win.accept_btn.isChecked
+            print(self.x)
+
+
+            sdf=1
             #print("is draw is checked")
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
@@ -440,6 +475,7 @@ class MainWindow(QWidget):  # QWidget
                     self.xy_list.append(self.x)  # append to xy_list
                     self.xy_list.append(self.y)
                     self.lineplot.setData(x=self.x, y=self.y)
+                    print("hui double")
                     print(self.xy_list)
 
                     # after double click open new window: ask for acceptance or clearance of ROI
@@ -454,15 +490,17 @@ class MainWindow(QWidget):  # QWidget
 
     def accept_ROI(self):
           # Disable if ROI is completed and accepted
-        #self.roi_list.append((self.xy_list))
-        self.enableBtn(self.add_ROI_btn)
-        if self.accept_win.accept_btn.isDown():
-            self.accept_win.accept_btn.setChecked(True)
-        # if accept btn is clicked -> self.roi_list.append((self.xy_list))
-        if self.accept_win.accept_btn.isChecked():
+
+        print("hello in ROI")
+        if self.accept_win.accept_btn.isChecked:
             self.roi_list.append((self.xy_list))
-            self.accept_win.accept_btn.setChecked(False)
-            #print(self.roi_list)
+            self.draw_btn.setChecked(False)
+
+            self.x = []
+            self.y = []
+            self.xy_list = []
+            sdf=1
+
 
         self.accept_win.close()
 
