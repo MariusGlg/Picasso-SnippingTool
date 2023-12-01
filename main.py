@@ -403,19 +403,6 @@ class MainWindow(QWidget):  # QWidget
         self.x = []
         self.y = []
         self.xy_list = []
-        if self.draw_btn.isChecked():
-            self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
-
-    def create_mask(self):
-        self.x = []
-        self.y = []
-        self.xy_list = []
-
-        self.accept_win.accept_btn.setChecked(False)
-
-        # if self.accept_win.accept_btn.isChecked:
-        #     self.accept_win.accept_btn.setChecked(False)  # reset accept_btn
-
         self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
 
     def close_ROI(self):
@@ -426,24 +413,35 @@ class MainWindow(QWidget):  # QWidget
             self.y.append(self.y[0])  # add first y-position to close ROI
             self.xy_list.append(self.x)  # append to xy_list
             self.xy_list.append(self.y)
-            self.lineplot.setData(x=self.x, y=self.y)
-            # after double click open new window: ask for acceptance or clearance of ROI
-            self.accept_win.show()
-            self.accept_win.accept_btn.pressed.connect(self.accept_ROI)
-            self.accept_win.clear_btn.pressed.connect(self.clear_ROI)
-            self.close_ROI_btn.setChecked(False)
 
-            #print(self.roi_list)
+            self.lineplot.setData(x=self.x, y=self.y)
+
+            self.roi_list.append((self.xy_list))
+
+            for i in range(len(self.roi_list)):
+                print(self.roi_list[i])
+                self.lineplot.setData(x=self.roi_list[i][0], y=self.roi_list[i][1], color = self.colorlist[i]) COLORLIST ADD COLOR
+
+            self.x = []
+            self.y = []
+            self.xy_list = []
+
+            self.close_ROI_btn.setChecked(False)
+            #self.draw_btn.setChecked(False)
+        self.close_ROI_btn.setChecked(False)
+
 
 
     def plot_ROI(self, mouseClickEvent):
         """draws line on plot based on user defined mouseclick"""
 
+        #print(self.draw_btn.isChecked())
         if self.draw_btn.isChecked():  # main switch to allow drawing in scene,  -> and not self.accept_win.accept_btn.isChecked
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
                 self.mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
                 if mouseClickEvent.button() == 1:  # Add line if left mouse is clicked
+                    print(mouseClickEvent.button())
                     self.x.append(self.mouse_point.x())
                     self.y.append(self.mouse_point.y())
                     #print(self.x)
@@ -451,55 +449,9 @@ class MainWindow(QWidget):  # QWidget
                     self.x = self.x[:-1]
                     self.y = self.y[:-1]
                     self.xy_list = np.vstack((self.x, self.y))
-                # if self.close_ROI_btn.isChecked(): # mouseClickEvent.double():  # if btn close ROI is clicked:
-                #     print("double click")
-                #     #self.x = self.x[:-1]
-                #     #self.y = self.y[:-1]
-                #     self.x.append(self.x[0])  # add first x-position to close ROI
-                #     self.y.append(self.y[0])  # add first y-position to close ROI
-                #     self.xy_list.append(self.x)  # append to xy_list
-                #     self.xy_list.append(self.y)
-                #     self.lineplot.setData(x=self.x, y=self.y)
-                #     print("hui double")
-                #     #print(self.xy_list)
-                #
-                #     # after double click open new window: ask for acceptance or clearance of ROI
-                #     self.accept_win.show()
-                #     self.accept_win.accept_btn.pressed.connect(self.accept_ROI)
-                #     self.accept_win.clear_btn.pressed.connect(self.clear_ROI)
-
 
                 self.lineplot.setData(x=self.x, y=self.y)
                 self.plot_widget.plot(self.x, self.y, symbol='+', symbolSize=10)
-
-
-    def accept_ROI(self):
-        # Disable if ROI is completed and accepted
-
-        self.roi_list.append((self.xy_list))
-        print(self.roi_list)
-        self.x = []
-        self.y = []
-        self.xy_list = []
-        self.accept_win.close()
-
-        self.draw_btn.setChecked(False)
-
-        # print("hello in ROI")
-        # print(self.accept_win.accept_btn.isChecked())
-        # if self.accept_win.accept_btn.isChecked:
-        #     print(self.accept_win.accept_btn.isChecked())
-        #     self.roi_list.append((self.xy_list))
-        #     #self.draw_btn.setChecked(False)
-        #     print(self.roi_list)
-        #
-        #     self.x = []
-        #     self.y = []
-        #     self.xy_list = []
-        #     self.accept_win.accept_btn.setChecked(True)
-        #     print(self.accept_win.accept_btn.isChecked())
-        #
-        #     self.accept_win.close()
 
     def clear_ROI(self):
         print("cleared")
