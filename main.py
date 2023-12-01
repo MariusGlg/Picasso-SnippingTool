@@ -16,7 +16,8 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMenuBar, QAction, qApp
 
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtGui import QFont, QColor, QPainter
+#from shapely.geometry import Polygon
 
 
 
@@ -24,7 +25,7 @@ from PyQt5.QtGui import QFont, QColor
 import sys, os
 import PyQt5.QtWidgets
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QMainWindow, QMenu, QGridLayout,QCheckBox, QSlider, QLineEdit, QSpinBox
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QPoint, QDateTime
 
 
 col_dbcluster = {0: "groups", 1: "convex_hull", 2: "area", 3: "mean_frame", 4: "com_x", 5: "com_y", 6: "std_frame",
@@ -84,6 +85,8 @@ class AcceptRoi(QWidget):
         self.btn_layout = QHBoxLayout()
         self.accept_btn = QPushButton("Accept")
         self.accept_btn.setCheckable(True)
+
+        #self.accept_btn.setEnabled(True)
         self.clear_btn = QPushButton("Clear")
         self.clear_btn.setCheckable(True)
         self.btn_layout.addWidget(self.accept_btn)
@@ -131,6 +134,7 @@ class MainWindow(QWidget):  # QWidget
         self.data_filtered = []
         self.alldata = []
         self.filepath_list = []
+        self.roi_list = []
 
         # # Menu Bar
         # self.myQMenuBar = QtGui.QMenuBar(self)
@@ -140,27 +144,16 @@ class MainWindow(QWidget):  # QWidget
         # self._createMenuBar()
         # self._createToolBars()
 
-
-        self.ROI_x = np.array([])
-        self.ROI_y = np.array([])
-        self.ROI_list = []
-        self.roi_coord_x = np.array([])
-        self.roi_coord_y = np.array([])
-        self.all_ROI_x = []
-        self.all_ROI_y = []
-
-
-        self.colorlist = ["k", "b", "m", "b", "c", "w", "r"]
+        self.colorlist = ["c", "b", "k", "b", "m", "w", "r"]
         # call all subclasses
 
         self.initUI()
         self.w = RoiWindow()
-        #self.loaded_files = FileWindow(self.alldata, self.filepath_list, self.colorlist)
-        self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setBackground("w")
 
         # initialize AcceptRoi
         self.accept_win = AcceptRoi()
+
+
 
     def initUI(self):
         # Set general properties
@@ -170,15 +163,18 @@ class MainWindow(QWidget):  # QWidget
 
         # Create buttons
         self.plot_btn = QPushButton("plot")
-        self.draw_mask_btn = QPushButton("draw_ROI")
-        self.draw_mask_btn.setCheckable(True)
+        self.draw_btn = QPushButton("draw/add ROI")
+        self.draw_btn.setCheckable(True)
         self.create_mask_btn = QPushButton("cut")
-        self.load_mask_btn = QPushButton("load_mask")
         self.create_mask_btn.setCheckable(True)
+        self.load_mask_btn = QPushButton("load_mask")
         self.save_mask_btn = QPushButton("save mask")
         self.reset_btn = QPushButton("reset")
-        self.add_ROI_btn = QPushButton("add ROI")
+        #self.add_ROI_btn = QPushButton("add ROI")
         #self.add_ROI_btn.setCheckable(True)
+        #self.disableBtn(self.add_ROI_btn)
+        self.close_ROI_btn = QPushButton("close ROI")
+        self.close_ROI_btn.setCheckable(True)
         self.remove_ROI_btn = QPushButton("remove ROI")
         #self.remove_ROI_btn.setCheckable(True)
 
@@ -192,38 +188,52 @@ class MainWindow(QWidget):  # QWidget
         # Add GridLayout for checkboxes
         self.checkboxGroup = QGridLayout()
         self.sp = QSpinBox()
-        self.sp.setValue(1)
-        self.sp.setRange(1,20)
+        self.sp_lbl = QLabel("plot size")
+        # size of points in plot
+        self.point_size = 2
+        self.sp.setValue(self.point_size)
+        self.sp.setRange(1,50)
         self.sp.valueChanged.connect(self.getLineEditInput)
 
-        # Add button to add/remove ROI
+        # Add GridLayout for ROI
+        self.roiGroup = QGridLayout()
 
 
         # Create Girdlayout and add Widgets
         self.gridLayout = QGridLayout()
-        self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
+        #self.gridLayout.addWidget(self.lbl, 0, 0, 5, 5)
+        self.gridLayout.addWidget(self.lbl, 0, 0, 10, 10)
 
-        self.gridLayout.addLayout(self.checkboxGroup, 0, 5, 5, 2)
-        self.gridLayout.addWidget(self.add_ROI_btn, 3, 5, 1, 1)
-        self.gridLayout.addWidget(self.remove_ROI_btn, 3, 6, 1, 1)
-        self.gridLayout.addWidget(self.sp, 4, 5, 1, 1)
-        self.gridLayout.addWidget(self.plot_btn, 5, 0, 1, 1)
-        self.gridLayout.addWidget(self.draw_mask_btn, 5, 1, 1, 1)
-        self.gridLayout.addWidget(self.create_mask_btn, 5, 2, 1, 1)
-        self.gridLayout.addWidget(self.save_mask_btn, 5, 3, 1, 1)
-        self.gridLayout.addWidget(self.reset_btn, 5, 4, 1, 1)
+        self.gridLayout.addLayout(self.checkboxGroup, 0, 10, 3, 1)
+        self.gridLayout.addLayout(self.roiGroup, 4, 10, 3, 1)
+        self.gridLayout.addWidget(self.close_ROI_btn, 6, 10, 1, 1)
+        self.gridLayout.addWidget(self.remove_ROI_btn, 7, 10, 1, 1)
+        self.gridLayout.addWidget(self.sp_lbl, 8, 10, 1, 1, alignment = Qt.AlignCenter )
+        self.gridLayout.addWidget(self.sp, 9, 10, 1, 1)
+        self.gridLayout.addWidget(self.plot_btn, 10, 0, 1, 2)
+        self.gridLayout.addWidget(self.draw_btn, 10, 2, 1, 2)
+        self.gridLayout.addWidget(self.create_mask_btn, 10, 4, 1, 2)
+        self.gridLayout.addWidget(self.save_mask_btn, 10, 6, 1, 2)
+        self.gridLayout.addWidget(self.reset_btn, 10, 8, 1, 2)
 
         # Set Layout
         self.setLayout(self.gridLayout)
 
         # # Connect buttons to functions
         self.plot_btn.pressed.connect(self.init_Plot)
-        self.draw_mask_btn.pressed.connect(self.create_mask)
+        #self.plot_btn.clicked.connect(self.showtime)
+        self.draw_btn.clicked.connect(self.draw)
+        #self.draw_btn.clicked.connect(self.create_mask)
         #self.create_mask_btn.pressed.connect(self.apply_mask)
         # self.load_mask_btn.pressed.connect(self.load_mask)
         # self.save_mask_btn.pressed.connect(self.save_mask)
         # self.reset_btn.pressed.connect(self.reset)
-        self.add_ROI_btn.pressed.connect(self.append_ROI)
+        #self.add_ROI_btn.clicked.connect(self.draw)
+        self.close_ROI_btn.clicked.connect(self.close_ROI)
+
+        # # create PlotWidget
+        # self.plot_widget = pg.PlotWidget()
+        # self.plot_widget.setBackground("w")
 
     def _createActions(self):
         # Creating action using the first constructor
@@ -235,7 +245,7 @@ class MainWindow(QWidget):  # QWidget
         self.saveAction = QAction("&Save", self)
         self.exitAction = QAction("&Exit", self)
         # Edit
-        self.copyAction = QAction("&Add_ROI", self)
+        #self.copyAction = QAction("&Add_ROI", self)
         self.pasteAction = QAction("&Delete_ROI", self)
         self.cutAction = QAction("&Invert_ROI", self)
         # Help
@@ -287,7 +297,7 @@ class MainWindow(QWidget):  # QWidget
             self.show()
             event.accept()
             self.update_label_text()
-            self.update_checkbox()
+            self.add_file_box()
         else:
             event.ignore()
 
@@ -296,12 +306,14 @@ class MainWindow(QWidget):  # QWidget
         if len(self.alldata) == 1:
             self.lbl.setText("{} file loaded".format(len(self.alldata)))  # update text
             self.setStyleSheet('''QLabel{border: 4px dashed #aaa}''')
+            self.setStyleSheet("background-color: white;")
         else:
             self.lbl.setText("{} files loaded".format(len(self.alldata)))  # update text
             self.setStyleSheet('''QLabel{border: 4px dashed #aaa}''')
+            self.setStyleSheet("background-color: white;")
 
 
-    def update_checkbox(self):
+    def add_file_box(self):
         self.checkboxList = []
         if not self.filepath_list:
             print("zero entries")
@@ -316,13 +328,20 @@ class MainWindow(QWidget):  # QWidget
         for i in range(len(self.checkboxList)):
             self.checkboxList[i].stateChanged.connect(self.update_plot)
 
-
-    def checkState(self):
+    def add_roi_box(self):
+        self.checkboxList_roi = []
+        if not self.roi_list:
+            print("zero entries")
+        else:
+            for i in range(len(self.roi_list)):
+                checkBox = QCheckBox('ROI {}'.format(i), self)
+                checkBox.setChecked(True)
+                self.checkboxList_roi.append(checkBox)
+                self.roiGroup.addWidget(checkBox, i, 0)
+                self.roiGroup.setRowStretch(self.checkboxGroup.rowCount(), 1)
+                self.roiGroup.setSpacing(5)
         for i in range(len(self.checkboxList)):
-            if self.checkboxList[i].isChecked():
-                print("is checked")
-            else:
-                print("is not checked")
+            self.checkboxList_roi[i].stateChanged.connect(self.update_plot)
 
     def getLineEditInput(self):
         """get input from QSpinBox and updates plot"""
@@ -336,35 +355,47 @@ class MainWindow(QWidget):  # QWidget
             key = list(locs_file.keys())[0]  # get key name
             locs = locs_file[str(key)][...]
         data_pd = pd.DataFrame(locs)
-
         return data_pd
+
+    def disableBtn(self, b):
+        # disable button clicks
+        b.setEnabled(False)
+
+    def enableBtn(self, b):
+        b.setEnabled(True)
+
 
     def init_Plot(self):
         """Set initial plot settings"""
 
-        # disable plot button
-        self.plot_btn.setEnabled(False)
+        # create PlotWidget
+        self.plot_widget = pg.PlotWidget()
+        self.plot_widget.setBackground("w")
 
-        #init_vals
-        self.point_size = 1
+        # disable plot button
+        self.disableBtn(self.plot_btn)
 
         # init line_plot
-        self.lineplot = pg.PlotCurveItem(pen=pg.mkPen(width=3, color="r"), symbol='+', size=1)
+        self.lineplot = pg.PlotCurveItem(pen=pg.mkPen(width=3, color="k"))
+
+
+        self.painter = QtGui.QPainter(self)
         self.plot_widget.addItem(self.lineplot)
+        #self.plot_widget.addItem(self.painter)
+
         # Replace Label with PlotWidget
         self.gridLayout.replaceWidget(self.lbl, self.plot_widget)
         self.scatterPlotItemList = []
 
         # Loop over all data after plot_btn is pressed and generate plot_widget
         for i in range(len(self.alldata)):
-
             # Add some colors, loop repetitively over colorlist
             if i >= len(self.colorlist):
                 i = i % len(self.colorlist)
             self.scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=1, color=self.colorlist[i]),
                                               symbol='o', size=self.point_size)
             self.plot_widget.addItem(self.scatter)
-            self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
+            self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"], marker="+", size=5)
             # Add to the mainlayout
             self.plot_widget.plotItem.setAutoVisible(y=True)
             self.scatterPlotItemList.append(self.scatter)
@@ -388,54 +419,62 @@ class MainWindow(QWidget):  # QWidget
     def update_file_paths(self):
         pass
 
-    def create_mask(self):
-        # self.roi_coord_x = []
-        # self.roi_coord_y = []
+    def draw(self):
+        self.x = []
+        self.y = []
+        self.xy_list = []
         self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
+
+    def close_ROI(self):
+        if self.close_ROI_btn.isChecked():  # mouseClickEvent.double():  # if btn close ROI is clicked:
+            # self.x = self.x[:-1]
+            # self.y = self.y[:-1]
+            self.x.append(self.x[0])  # add first x-position to close ROI
+            self.y.append(self.y[0])  # add first y-position to close ROI
+            self.xy_list.append(self.x)  # append to xy_list
+            self.xy_list.append(self.y)
+
+            #self.lineplot.setData(x=self.x, y=self.y)
+
+            self.roi_list.append((self.xy_list))
+
+            for i in range(len(self.roi_list)):
+                print(self.roi_list[i])
+                print(self.colorlist[i])
+                self.lineplot.setData(x=self.roi_list[i][0], y=self.roi_list[i][1], pen = pg.mkPen(self.colorlist[i], width=5))
+                #self.lineplot.setPen(pg.mkPen('w', width=15))
+
+            self.x = []
+            self.y = []
+            self.xy_list = []
+
+            self.close_ROI_btn.setChecked(False)
+            #self.draw_btn.setChecked(False)
+        self.add_roi_box()
+        self.close_ROI_btn.setChecked(False)
+
+
 
     def plot_ROI(self, mouseClickEvent):
         """draws line on plot based on user defined mouseclick"""
 
-        if self.draw_mask_btn.isChecked():
+        #print(self.draw_btn.isChecked())
+        if self.draw_btn.isChecked():  # main switch to allow drawing in scene,  -> and not self.accept_win.accept_btn.isChecked
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
-                mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
+                self.mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
                 if mouseClickEvent.button() == 1:  # Add line if left mouse is clicked
-                    self.roi_coord_x = np.append(self.roi_coord_x, mouse_point.x())
-                    self.roi_coord_y = np.append(self.roi_coord_y, mouse_point.y())
-                    #print("1")
+                    print(mouseClickEvent.button())
+                    self.x.append(self.mouse_point.x())
+                    self.y.append(self.mouse_point.y())
+                    #print(self.x)
                 if mouseClickEvent.button() == 2:  # remove if right mouse is clicked
-                    self.roi_coord_x = self.roi_coord_x[:-1]
-                    self.roi_coord_y = self.roi_coord_y[:-1]
-                if mouseClickEvent.double():
-                    # Needs improvement, last and second last are doubled
-                    self.roi_coord_x = np.append(self.roi_coord_x, self.roi_coord_x[0])
-                    self.roi_coord_y = np.append(self.roi_coord_y, self.roi_coord_y[0])
-                    # after double click open new window: ask for acceptance or clearance of ROI
-                    self.accept_win.show()
-                    self.accept_win.accept_btn.pressed.connect(self.accept_ROI)
-                    self.accept_win.clear_btn.pressed.connect(self.clear_ROI)
-                    #print("double")
+                    self.x = self.x[:-1]
+                    self.y = self.y[:-1]
+                    self.xy_list = np.vstack((self.x, self.y))
 
-
-        self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
-
-    def append_ROI(self):
-        """ Append ROI to all_ROI after ROI was accepted"""
-        sdf=1
-        if self.all_ROI_x == []:
-            self.all_ROI_x = self.roi_coord_x
-            self.all_ROI_y = self.roi_coord_y
-        else:
-            self.all_ROI_x = np.stack((self.all_ROI_x, self.roi_coord_x), axis=0)
-
-        self.roi_coord_x = []
-        self.roi_coord_y = []
-
-
-    def accept_ROI(self):
-        self.append_ROI()
-        self.accept_win.close()
+                self.lineplot.setData(x=self.x, y=self.y)
+                self.plot_widget.plot(self.x, self.y, symbol='+', symbolSize=10)
 
     def clear_ROI(self):
         print("cleared")
@@ -460,7 +499,7 @@ class MainWindow(QWidget):  # QWidget
             else:
                 self.plot_widget.listDataItems()[i+1].show() # show if box is checked
                 self.scatterPlotItemList[i].setSize(self.point_size)
-                self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"])
+                self.scatter.setData(x=self.alldata[i]["x"], y=self.alldata[i]["y"], marker='o')
 
         for i in range(len(self.alldata)):
             #self.plot_widget.update_plot(self.ROI_x, self.ROI_y, fillLevel=0, fillOutline=True)
@@ -517,7 +556,7 @@ class MainWindow(QWidget):  # QWidget
 
     def reset(self):
         self.plot_data_btn.setDisabled(False)  # disable button
-        self.draw_mask_btn.setCheckable(False)
+        self.draw_btn.setCheckable(False)
         self.horizontal_layout.replaceWidget(self.plot_widget, self.lbl)
         self.ROI_x = []
         self.ROI_y = []
@@ -617,5 +656,3 @@ sys.exit(app.exec_())
 #     self.buttonlayout.removeWidget(self.btn_outiside_ROI)
 #     for i in reversed(range(self.buttonlayout.count())):
 #         self.buttonlayout.itemAt(i).widget().show()
-
-
