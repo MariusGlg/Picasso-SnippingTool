@@ -223,7 +223,7 @@ class MainWindow(QWidget):  # QWidget
         # self.load_mask_btn.pressed.connect(self.load_mask)
         # self.save_mask_btn.pressed.connect(self.save_mask)
         # self.reset_btn.pressed.connect(self.reset)
-        self.add_ROI_btn.pressed.connect(self.create_mask)
+        self.add_ROI_btn.pressed.connect(self.append_ROI)
 
     def _createActions(self):
         # Creating action using the first constructor
@@ -329,6 +329,7 @@ class MainWindow(QWidget):  # QWidget
         self.point_size = self.sp.value()
         self.update_plot()
 
+
     def load(self):
         """load .hdf5_file"""
         with h5py.File(self.file_path, "r") as locs_file:
@@ -388,86 +389,53 @@ class MainWindow(QWidget):  # QWidget
         pass
 
     def create_mask(self):
-        #self.draw_mask_btn.setEnabled(True)
-        self.mouse_point = self.plot_widget.scene().sigMouseClicked.connect(self.create_ROI)
-        if self.mouse_point is None:
-            print("is none")
-            print(self.roi_coord_x)
-            self.roi_coord_x = np.append(self.roi_coord_x, self.mouse_point.x())
-            self.roi_coord_y = np.append(self.roi_coord_y, self.mouse_point.y())
-        #self.plot_ROI()
+        # self.roi_coord_x = []
+        # self.roi_coord_y = []
+        self.plot_widget.scene().sigMouseClicked.connect(self.plot_ROI)
 
-    def plot_ROI(self):
-        self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
-
-    def create_ROI(self, mouseClickEvent):
+    def plot_ROI(self, mouseClickEvent):
         """draws line on plot based on user defined mouseclick"""
-        sdf=1
-        #self.roi_coord_x = []
-        #self.roi_coord_y = []
 
         if self.draw_mask_btn.isChecked():
             coordinates = mouseClickEvent.scenePos()
             if self.plot_widget.sceneBoundingRect().contains(coordinates):
-                self.mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
+                mouse_point = self.plot_widget.plotItem.vb.mapSceneToView(coordinates)
                 if mouseClickEvent.button() == 1:  # Add line if left mouse is clicked
-                    self.roi_coord = np.append(self.roi_coord_x, self.mouse_point)
-                    return self.mouse_point
+                    self.roi_coord_x = np.append(self.roi_coord_x, mouse_point.x())
                     self.roi_coord_y = np.append(self.roi_coord_y, mouse_point.y())
                     #print("1")
-                    #self.plot_ROI()
                 if mouseClickEvent.button() == 2:  # remove if right mouse is clicked
                     self.roi_coord_x = self.roi_coord_x[:-1]
                     self.roi_coord_y = self.roi_coord_y[:-1]
-                    #self.plot_ROI()
                 if mouseClickEvent.double():
                     # Needs improvement, last and second last are doubled
                     self.roi_coord_x = np.append(self.roi_coord_x, self.roi_coord_x[0])
                     self.roi_coord_y = np.append(self.roi_coord_y, self.roi_coord_y[0])
-                    sdf=1
-                    #self.plot_ROI()
                     # after double click open new window: ask for acceptance or clearance of ROI
                     self.accept_win.show()
-                    sdf=1
                     self.accept_win.accept_btn.pressed.connect(self.accept_ROI)
                     self.accept_win.clear_btn.pressed.connect(self.clear_ROI)
-        #return
-        #return self.roi_coord_x, self.roi_coord_y
+                    #print("double")
+
+
+        self.lineplot.setData(x=self.roi_coord_x, y=self.roi_coord_y)
 
     def append_ROI(self):
         """ Append ROI to all_ROI after ROI was accepted"""
-
-        # self.draw_mask_btn.setCheckable(False)
-        if self.all_ROI_x == []:  # check if empty
-
-            print("is empty")
+        sdf=1
+        if self.all_ROI_x == []:
             self.all_ROI_x = self.roi_coord_x
             self.all_ROI_y = self.roi_coord_y
-            self.roi_coord_x = []
-            self.roi_coord_y = []
-            sdf=1
-            # self.accept_win.close()
         else:
-            print(self.all_ROI_x.shape)
-            print(self.roi_coord_x.shape)
-            sdf=1
-            self.all_ROI_x = np.concatenate([[self.all_ROI_x], [self.roi_coord_x]])
-            print(self.all_ROI_x)
-            #self.all_ROI_x = np.stack((self.all_ROI_x, self.roi_coord_x), axis=1)
-            self.roi_coord_x = []
-            self.roi_coord_y = []
-            sdf=1
-            # self.accept_win.close()
-        #self.draw_mask_btn.setEnabled(False)
+            self.all_ROI_x = np.stack((self.all_ROI_x, self.roi_coord_x), axis=0)
+
         self.roi_coord_x = []
         self.roi_coord_y = []
-        self.accept_win.close()
-
 
 
     def accept_ROI(self):
         self.append_ROI()
-
+        self.accept_win.close()
 
     def clear_ROI(self):
         print("cleared")
